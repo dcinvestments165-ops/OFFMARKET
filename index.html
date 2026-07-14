@@ -361,6 +361,12 @@
 
 <!-- ADMIN -->
 <div class="view" id="view-admin">
+  <div class="section-head"><h2>Platform overview</h2></div>
+  <div class="hero-stats" id="adminStats" style="margin-bottom:22px;flex-wrap:wrap;row-gap:14px;"></div>
+
+  <div class="section-head"><h2>All deals</h2><span class="count" id="adminDealCount"></span></div>
+  <div id="adminDealsList" style="margin-bottom:26px;"><div class="empty">Loading…</div></div>
+
   <div class="section-head"><h2>All platform users</h2><span class="count" id="adminCount"></span></div>
   <div id="adminList"><div class="empty">Loading…</div></div>
 </div>
@@ -1144,12 +1150,79 @@ async function loadDashboard(){
 // ---------- Admin ----------
 async function loadAdmin(){
   if(!currentProfile?.is_admin) return;
-  const box = document.getElementById('adminList');
-  const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending:false });
-  if(error){ box.innerHTML = '<div class="empty">'+error.message+'</div>'; return; }
-  document.getElementById('adminCount').textContent = (data||[]).length + ' users';
-  if(!data || !data.length){ box.innerHTML = '<div class="empty">No users yet.</div>'; return; }
-  box.innerHTML = data.map(p=>`
+  const statsBox = document.getElementById('adminStats');
+  const dealsBox = document.getElementById('adminDealsList');
+  const usersBox = document.getElementById('adminList');
+  statsBox.innerHTML = '<div class="empty">Loading…</div>';
+  dealsBox.innerHTML = '<div class="empty">Loading…</div>';
+  usersBox.innerHTML = '<div class="empty">Loading…</div>';
+
+  const [{ data: profiles, error: profErr }, { data: deals, error: dealErr }, { data: offers, error: offerErr }] = await Promise.all([
+    sb.from('profiles').select('*').order('created_at', { ascending:false }),
+    sb.from('deals').select('*').order('created_at', { ascending:false }),
+    sb.from('offers').select('*')
+  ]);
+
+  if(profErr || dealErr || offerErr){
+    const msg = (profErr||dealErr||offerErr).message;
+    statsBox.innerHTML = ''; dealsBox.innerHTML = '<div class="empty">'+msg+'</div>'; usersBox.innerHTML='';
+    return;
+  }
+
+  const allProfiles = profiles || [];
+  const allDeals = deals || [];
+  const allOffers = offers || [];
+  const profileMap = {};
+  allProfiles.forEach(p=> profileMap[p.id] = p);
+
+  const buyers = allProfiles.filter(p=>p.role==='buyer').length;
+  const wholesalers = allProfiles.filter(p=>p.role==='wholesaler').length;
+  const activeDeals = allDeals.filter(d=>d.status==='active').length;
+  const underContract = allDeals.filter(d=>d.status==='under_contract').length;
+  const totalCommission = allDeals
+    .filter(d=> d.status==='under_contract' && d.assignment_fee)
+    .reduce((sum,d)=> sum + (Number(d.assignment_fee)||0) * 0.10, 0);
+
+  statsBox.innerHTML = `
+    <div class="hstat"><b>${allProfiles.length}</b><span>Total users</span></div>
+    <div class="hstat"><b>${wholesalers}</b><span>Wholesalers</span></div>
+    <div class="hstat"><b>${buyers}</b><span>Buyers</span></div>
+    <div class="hstat"><b>${allDeals.length}</b><span>Total deals</span></div>
+    <div class="hstat"><b>${activeDeals}</b><span>Active</span></div>
+    <div class="hstat"><b>${underContract}</b><span>Under contract</span></div>
+    <div class="hstat"><b>${allOffers.length}</b><span>Total offers</span></div>
+    <div class="hstat"><b>$${Math.round(totalCommission).toLocaleString()}</b><span>Tracked commission</span></div>
+  `;
+
+  const offerCountByDeal = {};
+  allOffers.forEach(o=>{ offerCountByDeal[o.deal_id] = (offerCountByDeal[o.deal_id]||0) + 1; });
+
+  document.getElementById('adminDealCount').textContent = allDeals.length + ' deals';
+  if(!allDeals.length){
+    dealsBox.innerHTML = '<div class="empty">No deals posted yet.</div>';
+  } else {
+    dealsBox.innerHTML = allDeals.map(d=>{
+      const owner = profileMap[d.submitted_by];
+      const commission = (d.status==='under_contract' && d.assignment_fee) ? Math.round(Number(d.assignment_fee)*0.10) : null;
+      return `
+      <div class="deal-card clickable" onclick="openDealRoom('${d.id}')">
+        <div class="deal-top">
+          <div><div class="deal-addr">${d.address}</div><div class="deal-sub">${owner ? (owner.full_name||owner.email) : 'Unknown wholesaler'}</div></div>
+          <div class="status-badge ${d.status==='active' ? 'active' : 'inactive'}">${d.status}</div>
+        </div>
+        <div class="deal-metrics">
+          <div class="dm"><b>$${Number(d.price||0).toLocaleString()}</b><span>Asking</span></div>
+          <div class="dm"><b>${offerCountByDeal[d.id]||0}</b><span>Offers</span></div>
+          <div class="dm"><b>${d.assignment_fee ? '$'+Number(d.assignment_fee).toLocaleString() : '—'}</b><span>Assignment fee</span></div>
+          <div class="dm"><b>${commission!==null ? '$'+commission.toLocaleString() : '—'}</b><span>Commission (10%)</span></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('adminCount').textContent = allProfiles.length + ' users';
+  if(!allProfiles.length){ usersBox.innerHTML = '<div class="empty">No users yet.</div>'; return; }
+  usersBox.innerHTML = allProfiles.map(p=>`
     <div class="admin-row">
       <div>
         <div class="name">${p.full_name || '(no name)'}</div>
