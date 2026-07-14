@@ -161,7 +161,7 @@
 
 <nav class="tabbar">
   <button class="tab" data-view="dashboard" id="tabDashboard" hidden>Dashboard</button>
-  <button class="tab active" data-view="deals">Deal Feed</button>
+  <button class="tab active" data-view="deals" id="tabDeals">Deal Feed</button>
   <button class="tab" data-view="buybox" id="tabBuyBox">Buy Box</button>
   <button class="tab" data-view="submit" id="tabSubmit">Submit Deal</button>
   <button class="tab" data-view="mydeals" id="tabMyDeals" hidden>My Deals</button>
@@ -173,7 +173,7 @@
 <div class="view" id="view-dashboard">
   <div class="section-head"><h2 id="dashHeading">Dashboard</h2></div>
   <div class="hero-stats" id="dashStats" style="margin-bottom:18px;"></div>
-  <div class="section-head"><h2>Needs your attention</h2></div>
+  <div class="section-head"><h2>Overview</h2></div>
   <div id="dashActionList"><div class="empty">Loading…</div></div>
 </div>
 
@@ -393,7 +393,7 @@
 
 <nav class="bottomnav">
   <button class="bn-item" data-view="dashboard" id="bnDashboard" hidden><svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Home</button>
-  <button class="bn-item active" data-view="deals"><svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Deals</button>
+  <button class="bn-item active" data-view="deals" id="bnDeals"><svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Deals</button>
   <button class="bn-item" data-view="buybox" id="bnBuyBox"><svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg>Buy Box</button>
   <button class="bn-item" data-view="submit" id="bnSubmit"><svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Submit</button>
   <button class="bn-item" data-view="mydeals" id="bnMyDeals" hidden><svg class="bn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg>My Deals</button>
@@ -524,12 +524,12 @@ async function refreshSession(){
     document.getElementById('buyboxForm').style.display = wholesaler ? 'none' : 'block';
     document.getElementById('submitGate').style.display = 'none';
     document.getElementById('submitForm').style.display = 'block';
-    document.getElementById('tabMyDeals').hidden = !wholesaler;
-    document.getElementById('bnMyDeals').hidden = !wholesaler;
     document.getElementById('tabBuyBox').hidden = wholesaler;
     document.getElementById('bnBuyBox').hidden = wholesaler;
     document.getElementById('tabSubmit').hidden = !wholesaler;
     document.getElementById('bnSubmit').hidden = !wholesaler;
+    document.getElementById('tabDeals').hidden = wholesaler;
+    document.getElementById('bnDeals').hidden = wholesaler;
     document.getElementById('tabAdmin').hidden = !profile?.is_admin;
     document.getElementById('bnAdmin').hidden = !profile?.is_admin;
     document.getElementById('tabDashboard').hidden = false;
@@ -545,8 +545,6 @@ async function refreshSession(){
     document.getElementById('buyboxForm').style.display = 'none';
     document.getElementById('submitGate').style.display = 'block';
     document.getElementById('submitForm').style.display = 'none';
-    document.getElementById('tabMyDeals').hidden = true;
-    document.getElementById('bnMyDeals').hidden = true;
     document.getElementById('tabAdmin').hidden = true;
     document.getElementById('bnAdmin').hidden = true;
     document.getElementById('tabDashboard').hidden = true;
@@ -555,6 +553,8 @@ async function refreshSession(){
     document.getElementById('bnBuyBox').hidden = false;
     document.getElementById('tabSubmit').hidden = false;
     document.getElementById('bnSubmit').hidden = false;
+    document.getElementById('tabDeals').hidden = false;
+    document.getElementById('bnDeals').hidden = false;
     if(identityChanged) setView('deals');
   }
   await loadDeals();
@@ -669,8 +669,12 @@ function fillSubmitForm(d){
 function clearSubmitForm(){
   ['d_addr','d_sub','d_price','d_arv','d_rehab','d_roi'].forEach(id=> document.getElementById(id).value='');
 }
-function startEditDeal(id){
-  const d = (dealsCache.find(x=>x.id===id)) || myDealsCache.find(x=>x.id===id);
+async function startEditDeal(id){
+  let d = (dealsCache.find(x=>x.id===id)) || myDealsCache.find(x=>x.id===id);
+  if(!d){
+    const { data } = await sb.from('deals').select('*').eq('id', id).maybeSingle();
+    d = data;
+  }
   if(!d) return;
   editingDealId = id;
   fillSubmitForm(d);
@@ -719,7 +723,7 @@ document.getElementById('submitDeal').addEventListener('click', async ()=>{
   clearSubmitForm();
   await loadDeals();
   await loadStats();
-  setView(currentProfile?.role==='wholesaler' ? 'mydeals' : 'deals');
+  setView(currentProfile?.role==='wholesaler' ? 'dashboard' : 'deals');
 });
 
 // ---------- My deals (wholesaler) ----------
@@ -748,7 +752,7 @@ async function toggleDealStatus(id, currentStatus){
   const { error } = await sb.from('deals').update({ status:newStatus }).eq('id', id);
   if(error){ toast('Error: ' + error.message); return; }
   toast(newStatus==='active' ? 'Deal reactivated' : 'Deal marked inactive');
-  await loadMyDeals();
+  await loadDashboard();
   await loadDeals();
   await loadStats();
 }
@@ -758,7 +762,7 @@ async function deleteDeal(id){
   const { error } = await sb.from('deals').delete().eq('id', id);
   if(error){ toast('Error: ' + error.message); return; }
   toast('Deal deleted');
-  await loadMyDeals();
+  await loadDashboard();
   await loadDeals();
   await loadStats();
 }
@@ -1054,10 +1058,32 @@ async function loadDashboard(){
       html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">No offers yet — consider re-sharing</h3>`;
       html += needsOffers.map(d=> dealCardHtml(d, { clickable:true, actions:`<div class="deal-actions"><button class="btn-sm" onclick="openDealRoom('${d.id}')">View</button></div>` })).join('');
     }
-    listBox.innerHTML = html || '<div class="empty">Nothing needs your attention right now. Submit a deal to get started.</div>';
+    if(!html){
+      html = '<div class="empty">Nothing needs urgent attention right now.</div>';
+    }
+
+    // Full list — every deal this wholesaler has ever posted, regardless of state
+    html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:22px 0 10px;">All your deals (${deals.length})</h3>`;
+    if(!deals.length){
+      html += '<div class="empty">You haven\'t posted any deals yet — head to Submit Deal to publish your first one.</div>';
+    } else {
+      html += deals.map(d=>{
+        const offerCount = (offersByDeal[d.id]||[]).length;
+        return dealCardHtml(d, {
+          showStatus:true,
+          actions:`<div class="deal-actions">
+            <button class="btn-sm" onclick="openDealRoom('${d.id}')">View offers (${offerCount})</button>
+            <button class="btn-sm" onclick="startEditDeal('${d.id}')">Edit</button>
+            <button class="btn-sm" onclick="toggleDealStatus('${d.id}','${d.status}')">${d.status==='active' ? 'Mark inactive' : (d.status==='inactive' ? 'Reactivate' : 'Status')}</button>
+            <button class="btn-sm danger" onclick="deleteDeal('${d.id}')">Delete</button>
+          </div>`
+        });
+      }).join('');
+    }
+    listBox.innerHTML = html;
 
   } else {
-    const { data: myOffers } = await sb.from('offers').select('*').eq('buyer_id', currentUser.id);
+    const { data: myOffers } = await sb.from('offers').select('*, deal:deals(address, status, market)').eq('buyer_id', currentUser.id).order('created_at', { ascending:false });
     const offers = myOffers || [];
     const accepted = offers.filter(o=>o.status==='accepted').length;
     const pending = offers.filter(o=>o.status==='pending').length;
@@ -1070,17 +1096,43 @@ async function loadDashboard(){
       <div class="hstat"><b>${topMatches.length}</b><span>Top matches</span></div>
     `;
 
+    function offerStageHtml(o){
+      const dealStatus = o.deal?.status;
+      const stages = ['Submitted','Under review','Accepted','Under contract'];
+      const rejected = o.status==='rejected';
+      let currentIndex = 0;
+      if(o.status==='pending') currentIndex = 1;
+      else if(rejected) currentIndex = 1;
+      else if(o.status==='accepted') currentIndex = dealStatus==='under_contract' ? 3 : 2;
+      return stages.map((s,i)=>{
+        const isRejectedStop = rejected && i===1;
+        const active = i<=currentIndex && !isRejectedStop;
+        const bg = isRejectedStop ? '#f8ded9' : (active ? 'rgba(95,207,25,0.15)' : '#f1f4e8');
+        const fg = isRejectedStop ? 'var(--danger)' : (active ? 'var(--green-deep)' : '#8a8f7d');
+        return `<span class="tag" style="background:${bg};color:${fg};">${s}${isRejectedStop ? ' ✕' : ''}</span>`;
+      }).join(' <span style="color:#c7ccb8;">→</span> ');
+    }
+
     let html = '';
     if(topMatches.length){
       html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:6px 0 10px;">Top matches you haven't offered on</h3>`;
       html += topMatches.slice(0,5).map(d=> dealCardHtml(d, { showMatch:true, clickable:true, actions:`<div class="deal-actions"><button class="btn-sm primary" onclick="openDealRoom('${d.id}')">View &amp; offer</button></div>` })).join('');
     }
-    const acceptedDeals = offers.filter(o=>o.status==='accepted');
-    if(acceptedDeals.length){
-      html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">Accepted — move toward closing</h3>`;
-      html += acceptedDeals.map(o=> `<div class="offer-row"><div class="offer-top"><div><div class="who">Offer accepted</div><div class="st">$${Number(o.amount).toLocaleString()}</div></div><button class="btn-sm primary" style="flex:none;" onclick="openDealRoom('${o.deal_id}')">Open</button></div></div>`).join('');
+    html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">Your offers timeline (${offers.length})</h3>`;
+    if(!offers.length){
+      html += '<div class="empty">You haven\'t made any offers yet.</div>';
+    } else {
+      html += offers.map(o=> `
+        <div class="offer-row">
+          <div class="offer-top">
+            <div><div class="who">${o.deal?.address || 'Deal'}</div><div class="st">${o.deal?.market||''}</div></div>
+            <div class="amt">$${Number(o.amount).toLocaleString()}</div>
+          </div>
+          <div style="margin-top:10px;">${offerStageHtml(o)}</div>
+          <div class="deal-actions" style="margin-top:10px;"><button class="btn-sm" onclick="openDealRoom('${o.deal_id}')">Open deal room</button></div>
+        </div>`).join('');
     }
-    listBox.innerHTML = html || '<div class="empty">Set your buy box to start seeing matched deals here.</div>';
+    listBox.innerHTML = html;
   }
 
   } catch(err){
