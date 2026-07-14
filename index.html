@@ -480,19 +480,40 @@ async function submitAuth(){
   const errEl = document.getElementById('authErr');
   errEl.textContent = '';
   if(!email || !pass){ errEl.textContent = 'Enter email and password.'; return; }
-  if(authMode === 'signup'){
-    const name = document.getElementById('a_name').value.trim();
-    const phone = document.getElementById('a_phone').value.trim();
-    const role = document.getElementById('a_role').value;
-    const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name, role, phone } } });
-    if(error){ errEl.textContent = error.message; return; }
-    toast('Account created — check email if confirmation is required.');
-  } else {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if(error){ errEl.textContent = error.message; return; }
+  const submitBtn = document.getElementById('authSubmit');
+  submitBtn.disabled = true;
+  try{
+    if(authMode === 'signup'){
+      const name = document.getElementById('a_name').value.trim();
+      const phone = document.getElementById('a_phone').value.trim();
+      const role = document.getElementById('a_role').value;
+      const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name, role, phone } } });
+      if(error){
+        console.error('Signup error:', error);
+        errEl.textContent = error.message || error.error_description || 'Signup failed — check the browser console for details.';
+        return;
+      }
+      if(data?.user && !data.session){
+        toast('Account created — check your email to confirm before signing in.');
+      } else {
+        toast('Account created.');
+      }
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if(error){
+        console.error('Sign in error:', error);
+        errEl.textContent = error.message || error.error_description || 'Sign in failed — check the browser console for details.';
+        return;
+      }
+    }
+    closeAuth();
+    await refreshSession();
+  } catch(err){
+    console.error('Unexpected auth error:', err);
+    errEl.textContent = 'Unexpected error: ' + (err.message || 'Please try again, or check the browser console for details.');
+  } finally {
+    submitBtn.disabled = false;
   }
-  closeAuth();
-  await refreshSession();
 }
 
 async function refreshSession(){
