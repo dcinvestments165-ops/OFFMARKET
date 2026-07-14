@@ -63,6 +63,8 @@
   .status-badge{font-family:var(--font-mono);font-size:11px;font-weight:700;border-radius:100px;padding:4px 10px;flex:none;text-transform:uppercase;}
   .status-badge.active{color:var(--green-deep);background:rgba(95,207,25,0.13);}
   .status-badge.inactive{color:#8a8f7d;background:#f1f4e8;}
+  .status-badge.under_contract{color:#a3720c;background:#fbeecb;}
+  .status-badge.closed{color:#2b3a67;background:#e2e7f5;}
   .deal-metrics{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;}
   .dm{font-size:12px;}
   .dm b{display:block;font-size:14.5px;font-family:var(--font-display);}
@@ -336,12 +338,17 @@
         <div class="card" style="background:var(--paper);border-style:dashed;margin-bottom:14px;">
           <div class="dm"><b id="c_commission">$0</b><span>OffMarket commission (10% of assignment fee) — tracked only, not billed yet</span></div>
         </div>
-        <button class="btn-full" id="saveClosing" style="margin-bottom:0;">Save closing details</button>
+        <button class="btn-full" id="saveClosing" style="margin-bottom:8px;">Save closing details</button>
+        <button class="btn-ghost-full" id="markClosed" style="margin-top:0;">Mark deal as closed</button>
       </div>
       <div id="closingBuyerView" style="display:none;">
         <div class="doc-row"><div><span class="name" id="cb_title">Title company TBD</span></div></div>
         <div class="doc-row"><div><span class="name">Email</span></div><span class="sz" id="cb_email">—</span></div>
         <div class="doc-row"><div><span class="name">Phone</span></div><span class="sz" id="cb_phone">—</span></div>
+      </div>
+      <div id="closedView" style="display:none;">
+        <div class="doc-row"><div><span class="name">Status</span></div><span class="sz">✅ Closed</span></div>
+        <div class="doc-row"><div><span class="name">Closed on</span></div><span class="sz" id="cd_date">—</span></div>
       </div>
     </div>
     <div class="card" id="messageCard" style="display:none;">
@@ -805,10 +812,22 @@ async function openDealRoom(id){
 
 function renderClosingCard(){
   const card = document.getElementById('closingCard');
-  if(!activeDeal || activeDeal.status !== 'under_contract'){ card.style.display = 'none'; return; }
+  if(!activeDeal || (activeDeal.status !== 'under_contract' && activeDeal.status !== 'closed')){ card.style.display = 'none'; return; }
   card.style.display = 'block';
   const ownerView = document.getElementById('closingOwnerView');
   const buyerView = document.getElementById('closingBuyerView');
+  const closedView = document.getElementById('closedView');
+
+  if(activeDeal.status === 'closed'){
+    document.getElementById('closingHint').textContent = 'This deal has closed.';
+    ownerView.style.display = 'none';
+    buyerView.style.display = 'none';
+    closedView.style.display = 'block';
+    document.getElementById('cd_date').textContent = activeDeal.closed_at ? new Date(activeDeal.closed_at).toLocaleDateString() : '—';
+    return;
+  }
+  closedView.style.display = 'none';
+
   if(roomIsOwner){
     document.getElementById('closingHint').textContent = 'This deal is under contract. Add closing details so the buyer knows who to coordinate with.';
     ownerView.style.display = 'block';
@@ -846,6 +865,20 @@ document.getElementById('saveClosing').addEventListener('click', async ()=>{
   if(error){ toast('Error: ' + error.message); return; }
   Object.assign(activeDeal, payload);
   toast('Closing details saved');
+});
+
+document.getElementById('markClosed').addEventListener('click', async ()=>{
+  if(!activeDeal || !roomIsOwner) return;
+  if(!confirm('Mark this deal as fully closed? This finalizes the transaction record.')) return;
+  const closedAt = new Date().toISOString();
+  const { error } = await sb.from('deals').update({ status:'closed', closed_at:closedAt }).eq('id', activeDeal.id);
+  if(error){ toast('Error: ' + error.message); return; }
+  activeDeal.status = 'closed';
+  activeDeal.closed_at = closedAt;
+  toast('Deal marked as closed');
+  renderClosingCard();
+  await loadDeals();
+  await loadStats();
 });
 
 async function loadOffers(isOwner){
@@ -1035,6 +1068,7 @@ async function loadDashboard(){
       offers = offerRows || [];
     }
     const underContract = deals.filter(d=>d.status==='under_contract').length;
+    const closedCount = deals.filter(d=>d.status==='closed').length;
     const pendingOffers = offers.filter(o=>o.status==='pending').length;
 
     statsBox.innerHTML = `
@@ -1042,6 +1076,7 @@ async function loadDashboard(){
       <div class="hstat"><b>${offers.length}</b><span>Offers received</span></div>
       <div class="hstat"><b>${pendingOffers}</b><span>Pending review</span></div>
       <div class="hstat"><b>${underContract}</b><span>Under contract</span></div>
+      <div class="hstat"><b>${closedCount}</b><span>Closed</span></div>
     `;
 
     const offersByDeal = {};
@@ -1050,6 +1085,7 @@ async function loadDashboard(){
     const needsOffers = deals.filter(d=> d.status==='active' && !(offersByDeal[d.id]||[]).length);
     const newOffers = deals.filter(d=> (offersByDeal[d.id]||[]).some(o=>o.status==='pending'));
     const underContractDeals = deals.filter(d=> d.status==='under_contract');
+    const closedDeals = deals.filter(d=> d.status==='closed');
 
     let html = '';
     if(newOffers.length){
@@ -1059,6 +1095,10 @@ async function loadDashboard(){
     if(underContractDeals.length){
       html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">Under contract</h3>`;
       html += underContractDeals.map(d=> dealCardHtml(d, { clickable:true, actions:`<div class="deal-actions"><button class="btn-sm" onclick="openDealRoom('${d.id}')">Open deal room</button></div>` })).join('');
+    }
+    if(closedDeals.length){
+      html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">Closed</h3>`;
+      html += closedDeals.map(d=> dealCardHtml(d, { clickable:true, actions:`<div class="deal-actions"><button class="btn-sm" onclick="openDealRoom('${d.id}')">View</button></div>` })).join('');
     }
     if(needsOffers.length){
       html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">No offers yet — consider re-sharing</h3>`;
@@ -1104,12 +1144,16 @@ async function loadDashboard(){
 
     function offerStageHtml(o){
       const dealStatus = o.deal?.status;
-      const stages = ['Submitted','Under review','Accepted','Under contract'];
+      const stages = ['Submitted','Under review','Accepted','Under contract','Closed'];
       const rejected = o.status==='rejected';
       let currentIndex = 0;
       if(o.status==='pending') currentIndex = 1;
       else if(rejected) currentIndex = 1;
-      else if(o.status==='accepted') currentIndex = dealStatus==='under_contract' ? 3 : 2;
+      else if(o.status==='accepted'){
+        if(dealStatus==='closed') currentIndex = 4;
+        else if(dealStatus==='under_contract') currentIndex = 3;
+        else currentIndex = 2;
+      }
       return stages.map((s,i)=>{
         const isRejectedStop = rejected && i===1;
         const active = i<=currentIndex && !isRejectedStop;
@@ -1179,8 +1223,12 @@ async function loadAdmin(){
   const wholesalers = allProfiles.filter(p=>p.role==='wholesaler').length;
   const activeDeals = allDeals.filter(d=>d.status==='active').length;
   const underContract = allDeals.filter(d=>d.status==='under_contract').length;
-  const totalCommission = allDeals
+  const closedDeals = allDeals.filter(d=>d.status==='closed').length;
+  const projectedCommission = allDeals
     .filter(d=> d.status==='under_contract' && d.assignment_fee)
+    .reduce((sum,d)=> sum + (Number(d.assignment_fee)||0) * 0.10, 0);
+  const earnedCommission = allDeals
+    .filter(d=> d.status==='closed' && d.assignment_fee)
     .reduce((sum,d)=> sum + (Number(d.assignment_fee)||0) * 0.10, 0);
 
   statsBox.innerHTML = `
@@ -1190,12 +1238,18 @@ async function loadAdmin(){
     <div class="hstat"><b>${allDeals.length}</b><span>Total deals</span></div>
     <div class="hstat"><b>${activeDeals}</b><span>Active</span></div>
     <div class="hstat"><b>${underContract}</b><span>Under contract</span></div>
+    <div class="hstat"><b>${closedDeals}</b><span>Closed</span></div>
     <div class="hstat"><b>${allOffers.length}</b><span>Total offers</span></div>
-    <div class="hstat"><b>$${Math.round(totalCommission).toLocaleString()}</b><span>Tracked commission</span></div>
+    <div class="hstat"><b>$${Math.round(projectedCommission).toLocaleString()}</b><span>Pending commission</span></div>
+    <div class="hstat"><b>$${Math.round(earnedCommission).toLocaleString()}</b><span>Earned commission</span></div>
   `;
 
   const offerCountByDeal = {};
-  allOffers.forEach(o=>{ offerCountByDeal[o.deal_id] = (offerCountByDeal[o.deal_id]||0) + 1; });
+  const acceptedByDeal = {};
+  allOffers.forEach(o=>{
+    offerCountByDeal[o.deal_id] = (offerCountByDeal[o.deal_id]||0) + 1;
+    if(o.status==='accepted') acceptedByDeal[o.deal_id] = o;
+  });
 
   document.getElementById('adminDealCount').textContent = allDeals.length + ' deals';
   if(!allDeals.length){
@@ -1203,12 +1257,14 @@ async function loadAdmin(){
   } else {
     dealsBox.innerHTML = allDeals.map(d=>{
       const owner = profileMap[d.submitted_by];
-      const commission = (d.status==='under_contract' && d.assignment_fee) ? Math.round(Number(d.assignment_fee)*0.10) : null;
+      const commission = ((d.status==='under_contract' || d.status==='closed') && d.assignment_fee) ? Math.round(Number(d.assignment_fee)*0.10) : null;
+      const acceptedOffer = acceptedByDeal[d.id];
+      const acceptedBuyer = acceptedOffer ? profileMap[acceptedOffer.buyer_id] : null;
       return `
       <div class="deal-card clickable" onclick="openDealRoom('${d.id}')">
         <div class="deal-top">
-          <div><div class="deal-addr">${d.address}</div><div class="deal-sub">${owner ? (owner.full_name||owner.email) : 'Unknown wholesaler'}</div></div>
-          <div class="status-badge ${d.status==='active' ? 'active' : 'inactive'}">${d.status}</div>
+          <div><div class="deal-addr">${d.address}</div><div class="deal-sub">Posted by ${owner ? (owner.full_name||owner.email) : 'Unknown wholesaler'}</div></div>
+          <div class="status-badge ${d.status}">${d.status.replace('_',' ')}</div>
         </div>
         <div class="deal-metrics">
           <div class="dm"><b>$${Number(d.price||0).toLocaleString()}</b><span>Asking</span></div>
@@ -1216,20 +1272,32 @@ async function loadAdmin(){
           <div class="dm"><b>${d.assignment_fee ? '$'+Number(d.assignment_fee).toLocaleString() : '—'}</b><span>Assignment fee</span></div>
           <div class="dm"><b>${commission!==null ? '$'+commission.toLocaleString() : '—'}</b><span>Commission (10%)</span></div>
         </div>
+        ${acceptedBuyer ? `<div class="deal-tags"><span class="tag">Accepted: ${acceptedBuyer.full_name||acceptedBuyer.email} · $${Number(acceptedOffer.amount).toLocaleString()}</span></div>` : ''}
       </div>`;
     }).join('');
   }
 
   document.getElementById('adminCount').textContent = allProfiles.length + ' users';
   if(!allProfiles.length){ usersBox.innerHTML = '<div class="empty">No users yet.</div>'; return; }
-  usersBox.innerHTML = allProfiles.map(p=>`
+  const dealCountByUser = {};
+  allDeals.forEach(d=>{ dealCountByUser[d.submitted_by] = (dealCountByUser[d.submitted_by]||0) + 1; });
+  const offerCountByUser = {};
+  allOffers.forEach(o=>{ offerCountByUser[o.buyer_id] = (offerCountByUser[o.buyer_id]||0) + 1; });
+  usersBox.innerHTML = allProfiles.map(p=>{
+    const joined = p.created_at ? new Date(p.created_at).toLocaleDateString() : '—';
+    const activity = p.role==='wholesaler'
+      ? `${dealCountByUser[p.id]||0} deals posted`
+      : `${offerCountByUser[p.id]||0} offers made`;
+    return `
     <div class="admin-row">
       <div>
         <div class="name">${p.full_name || '(no name)'}</div>
         <div class="meta">${p.email||''}${p.phone ? ' · '+p.phone : ''}</div>
+        <div class="meta">Joined ${joined} · ${activity}</div>
       </div>
       <div class="role-badge">${p.role}${p.is_admin ? ' · admin' : ''}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ---------- Stats ----------
