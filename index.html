@@ -66,6 +66,17 @@
   .confidence-badge.low{background:rgba(192,57,43,0.2);color:#f5c9c4;}
   .photo-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);}
   .rehab-row,.comp-row{display:flex;justify-content:space-between;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:13px;}
+  .verified-badge{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:var(--green-deep);background:rgba(95,207,25,0.13);border-radius:100px;padding:2px 8px;}
+  .fav-star{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.9);border:1px solid var(--line);border-radius:50%;width:32px;height:32px;font-size:16px;display:flex;align-items:center;justify-content:center;z-index:2;}
+  .fav-star.on{color:#e0a72c;}
+  .fav-star.off{color:#c7ccb8;}
+  .milestone-row{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px;font-size:13px;}
+  .milestone-row.done{background:rgba(95,207,25,0.08);border-color:rgba(95,207,25,0.3);}
+  .milestone-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+  .milestone-check.done{background:var(--green);border-color:var(--green);color:#fff;}
+  .star-picker{display:flex;gap:6px;font-size:24px;cursor:pointer;}
+  .star-picker span{color:#e3e8d6;}
+  .star-picker span.on{color:#e0a72c;}
   .status-badge{font-family:var(--font-mono);font-size:11px;font-weight:700;border-radius:100px;padding:4px 10px;flex:none;text-transform:uppercase;}
   .status-badge.active{color:var(--green-deep);background:rgba(95,207,25,0.13);}
   .status-badge.inactive{color:#8a8f7d;background:#f1f4e8;}
@@ -259,6 +270,30 @@
         <button class="chip" data-chip="New Construction">New Construction</button>
       </div>
     </div>
+    <div class="card">
+      <h3>Preferred features</h3>
+      <p class="hint">Optional — deals with these get a slight match boost, but this won't exclude deals.</p>
+      <div class="chip-group" id="flagPrefChips">
+        <button class="chip" data-chip="Waterfront">Waterfront</button>
+        <button class="chip" data-chip="Pool">Pool</button>
+        <button class="chip" data-chip="HOA">HOA</button>
+        <button class="chip" data-chip="Short Sale">Short Sale</button>
+        <button class="chip" data-chip="Subject-To">Subject-To</button>
+        <button class="chip" data-chip="Probate">Probate</button>
+        <button class="chip" data-chip="Tax Deed">Tax Deed</button>
+        <button class="chip" data-chip="Seller Financing">Seller Financing</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Construction &amp; age</h3>
+      <div class="range-row">
+        <div class="field" style="flex:1;">
+          <label>Construction</label>
+          <select id="constructionPref"><option>Any</option><option>CBS</option><option>Wood Frame</option><option>Block</option></select>
+        </div>
+        <div class="field" style="flex:1;"><label>Min year built</label><input type="number" id="minYearBuilt" placeholder="No minimum"></div>
+      </div>
+    </div>
     <button class="btn-full" id="saveBuyBox">Save buy box &amp; re-match deals</button>
   </div>
 </div>
@@ -295,11 +330,45 @@
         <div class="field" style="flex:1;"><label>Rehab estimate</label><input type="number" id="d_rehab" placeholder="41000"></div>
         <div class="field" style="flex:1;"><label>Est. ROI %</label><input type="number" id="d_roi" placeholder="21.4"></div>
       </div>
-      <div class="field" style="margin-bottom:0;">
+      <div class="field" style="margin-bottom:14px;">
         <label>Strategy</label>
         <select id="d_crit">
           <option>Fix & Flip</option><option>Buy & Hold</option><option>STR Conversion</option><option>New Construction</option>
         </select>
+      </div>
+      <div class="range-row">
+        <div class="field" style="flex:1;"><label>Square footage</label><input type="number" id="d_sqft" placeholder="1680"></div>
+        <div class="field" style="flex:1;"><label>Year built</label><input type="number" id="d_year" placeholder="1998"></div>
+      </div>
+      <div class="range-row">
+        <div class="field" style="flex:1;">
+          <label>Occupancy</label>
+          <select id="d_occupancy"><option>Vacant</option><option>Owner Occupied</option><option>Tenant Occupied</option></select>
+        </div>
+        <div class="field" style="flex:1;">
+          <label>Access</label>
+          <select id="d_access"><option>Available</option><option>Call First</option><option>Not Available Yet</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Construction</label>
+        <select id="d_construction"><option>CBS</option><option>Wood Frame</option><option>Block</option><option>Other</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Deal flags</label>
+        <div class="chip-group" id="dealFlagChips">
+          <button class="chip" data-chip="Waterfront">Waterfront</button>
+          <button class="chip" data-chip="Pool">Pool</button>
+          <button class="chip" data-chip="HOA">HOA</button>
+          <button class="chip" data-chip="Flood Zone">Flood Zone</button>
+          <button class="chip" data-chip="Short Sale">Short Sale</button>
+          <button class="chip" data-chip="Subject-To">Subject-To</button>
+          <button class="chip" data-chip="Probate">Probate</button>
+          <button class="chip" data-chip="Tax Deed">Tax Deed</button>
+          <button class="chip" data-chip="Fire Damage">Fire Damage</button>
+          <button class="chip" data-chip="Tear Down">Tear Down</button>
+          <button class="chip" data-chip="Seller Financing">Seller Financing</button>
+        </div>
       </div>
     </div>
     <button class="btn-full" id="submitDeal">Publish deal to marketplace</button>
@@ -368,6 +437,16 @@
       </div>
     </div>
 
+    <div class="card" id="docsCard">
+      <h3>Documents</h3>
+      <p class="hint">Purchase &amp; sale agreement, title docs, disclosures — anything a buyer needs to trust the deal.</p>
+      <div id="docsList" style="margin-bottom:12px;"></div>
+      <div id="docUploadRow" style="display:none;">
+        <input type="file" id="docInput" accept=".pdf,.doc,.docx,.jpg,.png" multiple style="margin-bottom:10px;width:100%;">
+        <button class="btn-ghost-full" id="uploadDocsBtn" style="margin-top:0;">Upload documents</button>
+      </div>
+    </div>
+
     <div class="card" id="historyCard">
       <h3>Property history</h3>
       <div id="historyView" style="font-size:13.5px;color:#5a5f52;line-height:1.5;"></div>
@@ -403,6 +482,13 @@
           <div class="field" style="flex:1;"><label>Title contact email</label><input type="email" id="c_temail" placeholder="closer@title.com"></div>
           <div class="field" style="flex:1;"><label>Title contact phone</label><input type="text" id="c_tphone" placeholder="(561) 555-0100"></div>
         </div>
+        <div class="range-row">
+          <div class="field" style="flex:1;"><label>Earnest money amount</label><input type="number" id="c_emAmount" placeholder="5000"></div>
+          <div class="field" style="flex:1;">
+            <label>Earnest money status</label>
+            <select id="c_emStatus"><option value="not_submitted">Not submitted</option><option value="submitted">Submitted</option><option value="verified">Verified by title</option></select>
+          </div>
+        </div>
         <div class="card" style="background:var(--paper);border-style:dashed;margin-bottom:14px;">
           <div class="dm"><b id="c_commission">$0</b><span>Vaultlist commission (10% of assignment fee) — tracked only, not billed yet</span></div>
         </div>
@@ -413,12 +499,31 @@
         <div class="doc-row"><div><span class="name" id="cb_title">Title company TBD</span></div></div>
         <div class="doc-row"><div><span class="name">Email</span></div><span class="sz" id="cb_email">—</span></div>
         <div class="doc-row"><div><span class="name">Phone</span></div><span class="sz" id="cb_phone">—</span></div>
+        <div class="doc-row"><div><span class="name">Earnest money</span></div><span class="sz" id="cb_em">—</span></div>
       </div>
       <div id="closedView" style="display:none;">
         <div class="doc-row"><div><span class="name">Status</span></div><span class="sz">✅ Closed</span></div>
         <div class="doc-row"><div><span class="name">Closed on</span></div><span class="sz" id="cd_date">—</span></div>
       </div>
     </div>
+
+    <div class="card" id="milestonesCard" style="display:none;">
+      <h3>Closing progress</h3>
+      <p class="hint">Track the deal from contract to close, all in one place.</p>
+      <div id="milestonesList"></div>
+    </div>
+
+    <div class="card" id="ratingCard" style="display:none;">
+      <h3>Rate this transaction</h3>
+      <p class="hint" id="ratingHint"></p>
+      <div class="star-picker" id="starPicker">
+        <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>
+      </div>
+      <textarea id="ratingComment" rows="2" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);margin:12px 0;" placeholder="Optional comment about how the transaction went"></textarea>
+      <button class="btn-ghost-full" id="submitRatingBtn" style="margin-top:0;">Submit rating</button>
+      <div id="ratingSubmitted" style="display:none;" class="empty">You've already rated this transaction. Thank you!</div>
+    </div>
+
     <div class="card" id="messageCard" style="display:none;">
       <h3 id="messageHeading">Conversation</h3>
       <p class="hint" id="messageSubHint"></p>
@@ -599,6 +704,7 @@ async function refreshSession(){
     currentBuyBox = null;
     dealsCache = [];
     myDealsCache = [];
+    favoriteIdSet = new Set();
     editingDealId = null;
     document.getElementById('roomEmpty').style.display = 'block';
     document.getElementById('roomContent').style.display = 'none';
@@ -673,16 +779,21 @@ async function loadBuyBox(){
     document.querySelectorAll('#marketChips .chip').forEach(c=> c.classList.toggle('on', (data.markets||[]).includes(c.dataset.chip)));
     document.querySelectorAll('#typeChips .chip').forEach(c=> c.classList.toggle('on', (data.property_types||[]).includes(c.dataset.chip)));
     document.querySelectorAll('#critChips .chip').forEach(c=> c.classList.toggle('on', (data.criteria||[]).includes(c.dataset.chip)));
+    document.querySelectorAll('#flagPrefChips .chip').forEach(c=> c.classList.toggle('on', (data.flag_prefs||[]).includes(c.dataset.chip)));
     document.getElementById('priceMin').value = data.price_min;
     document.getElementById('priceMax').value = data.price_max;
     roiSlider.value = data.min_roi;
     document.getElementById('roiVal').textContent = data.min_roi + '% target';
+    document.getElementById('constructionPref').value = data.construction_pref || 'Any';
+    document.getElementById('minYearBuilt').value = data.min_year_built || '';
   } else {
-    document.querySelectorAll('#marketChips .chip, #typeChips .chip, #critChips .chip').forEach(c=> c.classList.remove('on'));
+    document.querySelectorAll('#marketChips .chip, #typeChips .chip, #critChips .chip, #flagPrefChips .chip').forEach(c=> c.classList.remove('on'));
     document.getElementById('priceMin').value = 120000;
     document.getElementById('priceMax').value = 450000;
     roiSlider.value = 15;
     document.getElementById('roiVal').textContent = '15% target';
+    document.getElementById('constructionPref').value = 'Any';
+    document.getElementById('minYearBuilt').value = '';
   }
 }
 
@@ -691,9 +802,13 @@ document.getElementById('saveBuyBox').addEventListener('click', async ()=>{
   const markets = [...document.querySelectorAll('#marketChips .chip.on')].map(c=>c.dataset.chip);
   const types = [...document.querySelectorAll('#typeChips .chip.on')].map(c=>c.dataset.chip);
   const criteria = [...document.querySelectorAll('#critChips .chip.on')].map(c=>c.dataset.chip);
+  const flagPrefs = [...document.querySelectorAll('#flagPrefChips .chip.on')].map(c=>c.dataset.chip);
   const payload = {
     user_id: currentUser.id,
     markets, property_types: types, criteria,
+    flag_prefs: flagPrefs,
+    construction_pref: document.getElementById('constructionPref').value,
+    min_year_built: parseInt(document.getElementById('minYearBuilt').value) || null,
     price_min: parseFloat(document.getElementById('priceMin').value)||0,
     price_max: parseFloat(document.getElementById('priceMax').value)||1000000,
     min_roi: parseFloat(roiSlider.value),
@@ -712,6 +827,7 @@ async function loadDeals(){
   const { data, error } = await sb.from('deals').select('*').eq('status','active').order('created_at', { ascending:false });
   if(error){ document.getElementById('dealList').innerHTML = '<div class="empty">Error loading deals: '+error.message+'</div>'; return; }
   dealsCache = data || [];
+  await loadFavorites();
   renderDeals();
 }
 
@@ -722,35 +838,72 @@ function scoreDeal(d){
   if((currentBuyBox.property_types||[]).includes(d.property_type)) score += 15; else score -= 10;
   if(d.price >= currentBuyBox.price_min && d.price <= currentBuyBox.price_max) score += 10; else score -= 15;
   if(d.roi >= currentBuyBox.min_roi) score += 10; else score -= 10;
+  const flagPrefs = currentBuyBox.flag_prefs || [];
+  if(flagPrefs.length){
+    const matchedFlags = (d.flags||[]).filter(f=> flagPrefs.includes(f)).length;
+    score += Math.min(10, matchedFlags * 4);
+  }
+  if(currentBuyBox.construction_pref && currentBuyBox.construction_pref !== 'Any'){
+    score += (d.construction === currentBuyBox.construction_pref) ? 5 : -3;
+  }
+  if(currentBuyBox.min_year_built && d.year_built){
+    score += (d.year_built >= currentBuyBox.min_year_built) ? 5 : -5;
+  }
   return Math.max(5, Math.min(99, Math.round(score)));
 }
 
 function dealCardHtml(d, opts){
   opts = opts || {};
   const match = opts.showMatch ? scoreDeal(d) : null;
+  const pricePerSqft = d.sqft ? Math.round(Number(d.price||0) / Number(d.sqft)) : null;
+  const dom = d.created_at ? Math.max(0, Math.floor((Date.now() - new Date(d.created_at).getTime()) / 86400000)) : null;
+  const isFav = opts.favoriteIds && opts.favoriteIds.has(d.id);
+  const offerCount = opts.showOfferCount ? (d.offer_count||0) : null;
   return `
     <div class="deal-card ${opts.clickable ? 'clickable' : ''}" ${opts.clickable ? `onclick="openDealRoom('${d.id}')"` : ''}>
+      ${opts.showFavorite ? `<button class="fav-star ${isFav?'on':'off'}" onclick="event.stopPropagation();toggleFavorite('${d.id}')">${isFav?'★':'☆'}</button>` : ''}
       <div class="deal-top">
-        <div><div class="deal-addr">${d.address}</div><div class="deal-sub">${d.sub||''}</div></div>
+        <div><div class="deal-addr">${d.address}</div><div class="deal-sub">${d.sub||''}${d.occupancy ? ' · '+d.occupancy : ''}</div></div>
         ${match!==null ? `<div class="match-badge">${match}% match</div>` : ''}
-        ${opts.showStatus ? `<div class="status-badge ${d.status}">${d.status}</div>` : ''}
+        ${opts.showStatus ? `<div class="status-badge ${d.status}">${d.status.replace('_',' ')}</div>` : ''}
       </div>
       <div class="deal-metrics">
         <div class="dm"><b>$${Number(d.price||0).toLocaleString()}</b><span>Asking</span></div>
         <div class="dm"><b>$${Number(d.arv||0).toLocaleString()}</b><span>ARV</span></div>
         <div class="dm"><b>${d.roi||0}%</b><span>Est. ROI</span></div>
         <div class="dm"><b>$${Number(d.rehab||0).toLocaleString()}</b><span>Rehab</span></div>
+        ${pricePerSqft ? `<div class="dm"><b>$${pricePerSqft}</b><span>Per sqft</span></div>` : ''}
+        ${dom!==null ? `<div class="dm"><b>${dom}d</b><span>On market</span></div>` : ''}
+        ${offerCount!==null ? `<div class="dm"><b>${offerCount}</b><span>Offers</span></div>` : ''}
       </div>
-      <div class="deal-tags"><span class="tag">${d.market||''}</span><span class="tag">${d.property_type||''}</span>${(d.criteria_tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="deal-tags"><span class="tag">${d.market||''}</span><span class="tag">${d.property_type||''}</span>${d.construction ? `<span class="tag">${d.construction}</span>` : ''}${(d.criteria_tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}${(d.flags||[]).map(f=>`<span class="tag">${f}</span>`).join('')}</div>
       ${opts.actions || ''}
     </div>`;
+}
+
+let favoriteIdSet = new Set();
+async function loadFavorites(){
+  if(!currentUser){ favoriteIdSet = new Set(); return; }
+  const { data } = await sb.from('favorites').select('deal_id').eq('user_id', currentUser.id);
+  favoriteIdSet = new Set((data||[]).map(f=>f.deal_id));
+}
+async function toggleFavorite(dealId){
+  if(!currentUser){ openAuth(); return; }
+  if(favoriteIdSet.has(dealId)){
+    await sb.from('favorites').delete().eq('user_id', currentUser.id).eq('deal_id', dealId);
+    favoriteIdSet.delete(dealId);
+  } else {
+    await sb.from('favorites').insert({ user_id: currentUser.id, deal_id: dealId });
+    favoriteIdSet.add(dealId);
+  }
+  renderDeals();
 }
 
 function renderDeals(){
   const list = document.getElementById('dealList');
   if(!dealsCache.length){ list.innerHTML = '<div class="empty">No deals yet — be the first to submit one.</div>'; document.getElementById('dealCount').textContent='0 deals'; return; }
   list.innerHTML = dealsCache.map(d=> dealCardHtml(d, {
-    showMatch:true, clickable:true,
+    showMatch:true, clickable:true, showFavorite: !!currentUser, favoriteIds: favoriteIdSet, showOfferCount:true,
     actions:`<div class="deal-actions"><button class="btn-sm">View deal room</button><button class="btn-sm primary">Make offer</button></div>`
   })).join('');
   document.getElementById('dealCount').textContent = dealsCache.length + ' deals';
@@ -760,16 +913,23 @@ function renderDeals(){
 function fillSubmitForm(d){
   document.getElementById('d_addr').value = d.address||'';
   document.getElementById('d_sub').value = d.sub||'';
-  document.getElementById('d_market').value = d.market||'Palm Beach, FL';
+  document.getElementById('d_market').value = d.market||'Palm Beach County';
   document.getElementById('d_type').value = d.property_type||'Single Family';
   document.getElementById('d_price').value = d.price||'';
   document.getElementById('d_arv').value = d.arv||'';
   document.getElementById('d_rehab').value = d.rehab||'';
   document.getElementById('d_roi').value = d.roi||'';
   document.getElementById('d_crit').value = (d.criteria_tags && d.criteria_tags[0]) || 'Fix & Flip';
+  document.getElementById('d_sqft').value = d.sqft||'';
+  document.getElementById('d_year').value = d.year_built||'';
+  document.getElementById('d_occupancy').value = d.occupancy||'Vacant';
+  document.getElementById('d_access').value = d.access||'Available';
+  document.getElementById('d_construction').value = d.construction||'CBS';
+  document.querySelectorAll('#dealFlagChips .chip').forEach(c=> c.classList.toggle('on', (d.flags||[]).includes(c.dataset.chip)));
 }
 function clearSubmitForm(){
-  ['d_addr','d_sub','d_price','d_arv','d_rehab','d_roi'].forEach(id=> document.getElementById(id).value='');
+  ['d_addr','d_sub','d_price','d_arv','d_rehab','d_roi','d_sqft','d_year'].forEach(id=> document.getElementById(id).value='');
+  document.querySelectorAll('#dealFlagChips .chip').forEach(c=> c.classList.remove('on'));
 }
 async function startEditDeal(id){
   let d = (dealsCache.find(x=>x.id===id)) || myDealsCache.find(x=>x.id===id);
@@ -804,7 +964,13 @@ document.getElementById('submitDeal').addEventListener('click', async ()=>{
     arv: parseFloat(document.getElementById('d_arv').value)||0,
     rehab: parseFloat(document.getElementById('d_rehab').value)||0,
     roi: parseFloat(document.getElementById('d_roi').value)||0,
-    criteria_tags: [document.getElementById('d_crit').value]
+    criteria_tags: [document.getElementById('d_crit').value],
+    sqft: parseFloat(document.getElementById('d_sqft').value) || null,
+    year_built: parseInt(document.getElementById('d_year').value) || null,
+    occupancy: document.getElementById('d_occupancy').value,
+    access: document.getElementById('d_access').value,
+    construction: document.getElementById('d_construction').value,
+    flags: [...document.querySelectorAll('#dealFlagChips .chip.on')].map(c=>c.dataset.chip)
   };
   if(!payload.address){ toast('Address is required'); return; }
 
@@ -896,6 +1062,8 @@ async function openDealRoom(id){
   setView('room');
   await loadOffers(roomIsOwner);
   renderClosingCard();
+  renderMilestones();
+  await renderRatingCard();
   await loadTrustLayer();
   await setupMessaging();
 }
@@ -926,6 +1094,8 @@ function renderClosingCard(){
     document.getElementById('c_title').value = activeDeal.title_company || '';
     document.getElementById('c_temail').value = activeDeal.title_contact_email || '';
     document.getElementById('c_tphone').value = activeDeal.title_contact_phone || '';
+    document.getElementById('c_emAmount').value = activeDeal.earnest_money_amount || '';
+    document.getElementById('c_emStatus').value = activeDeal.earnest_money_status || 'not_submitted';
     updateCommissionPreview();
   } else {
     document.getElementById('closingHint').textContent = 'This deal is under contract.';
@@ -934,6 +1104,8 @@ function renderClosingCard(){
     document.getElementById('cb_title').textContent = activeDeal.title_company || 'Title company TBD';
     document.getElementById('cb_email').textContent = activeDeal.title_contact_email || '—';
     document.getElementById('cb_phone').textContent = activeDeal.title_contact_phone || '—';
+    const emLabels = { not_submitted:'Not submitted yet', submitted:'Submitted', verified:'Verified by title' };
+    document.getElementById('cb_em').textContent = (activeDeal.earnest_money_amount ? '$'+Number(activeDeal.earnest_money_amount).toLocaleString()+' — ' : '') + (emLabels[activeDeal.earnest_money_status] || 'Not submitted yet');
   }
 }
 
@@ -977,6 +1149,18 @@ async function loadTrustLayer(){
     ? currentPhotos.map(p=> `<div style="position:relative;"><img class="photo-thumb" src="${p.url}">${roomIsOwner ? `<button onclick="deletePhoto('${p.id}')" style="position:absolute;top:4px;right:4px;background:rgba(20,22,15,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;">✕</button>` : ''}</div>`).join('')
     : '<div class="empty" style="grid-column:1/-1;">No photos yet.</div>';
   document.getElementById('photoUploadRow').style.display = roomIsOwner ? 'block' : 'none';
+
+  // Documents
+  const { data: docs } = await sb.from('deal_documents').select('*').eq('deal_id', activeDeal.id).order('created_at', { ascending:false });
+  const docsList = document.getElementById('docsList');
+  docsList.innerHTML = (docs && docs.length)
+    ? docs.map(d=> `
+      <div class="doc-row">
+        <div><span class="status-dot ready"></span><a href="${d.url}" target="_blank" class="name" style="color:var(--ink);text-decoration:underline;">${d.name||'Document'}</a></div>
+        ${roomIsOwner ? `<button onclick="deleteDocument('${d.id}')" style="background:none;border:none;color:var(--danger);font-size:12px;">✕</button>` : ''}
+      </div>`).join('')
+    : '<div class="empty">No documents uploaded yet.</div>';
+  document.getElementById('docUploadRow').style.display = roomIsOwner ? 'block' : 'none';
 
   // Comps
   const { data: comps } = await sb.from('comps').select('*').eq('deal_id', activeDeal.id).order('created_at', { ascending:false });
@@ -1052,6 +1236,30 @@ document.getElementById('uploadPhotosBtn').addEventListener('click', async ()=>{
   await loadTrustLayer();
 });
 
+async function deleteDocument(docId){
+  const { error } = await sb.from('deal_documents').delete().eq('id', docId);
+  if(error){ toast('Error: ' + error.message); return; }
+  await loadTrustLayer();
+}
+
+document.getElementById('uploadDocsBtn').addEventListener('click', async ()=>{
+  if(!activeDeal || !roomIsOwner) return;
+  const input = document.getElementById('docInput');
+  const files = Array.from(input.files || []);
+  if(!files.length){ toast('Choose at least one document first'); return; }
+  toast('Uploading ' + files.length + ' document(s)…');
+  for(const file of files){
+    const path = `${activeDeal.id}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await sb.storage.from('deal-docs').upload(path, file);
+    if(uploadError){ toast('Upload error: ' + uploadError.message); continue; }
+    const { data: publicUrlData } = sb.storage.from('deal-docs').getPublicUrl(path);
+    await sb.from('deal_documents').insert({ deal_id: activeDeal.id, url: publicUrlData.publicUrl, name: file.name });
+  }
+  input.value = '';
+  toast('Documents uploaded');
+  await loadTrustLayer();
+});
+
 async function deleteComp(compId){
   const { error } = await sb.from('comps').delete().eq('id', compId);
   if(error){ toast('Error: ' + error.message); return; }
@@ -1116,7 +1324,9 @@ document.getElementById('saveClosing').addEventListener('click', async ()=>{
     assignment_fee: parseFloat(document.getElementById('c_fee').value) || null,
     title_company: document.getElementById('c_title').value.trim(),
     title_contact_email: document.getElementById('c_temail').value.trim(),
-    title_contact_phone: document.getElementById('c_tphone').value.trim()
+    title_contact_phone: document.getElementById('c_tphone').value.trim(),
+    earnest_money_amount: parseFloat(document.getElementById('c_emAmount').value) || null,
+    earnest_money_status: document.getElementById('c_emStatus').value
   };
   const { error } = await sb.from('deals').update(payload).eq('id', activeDeal.id);
   if(error){ toast('Error: ' + error.message); return; }
@@ -1134,8 +1344,101 @@ document.getElementById('markClosed').addEventListener('click', async ()=>{
   activeDeal.closed_at = closedAt;
   toast('Deal marked as closed');
   renderClosingCard();
+  renderMilestones();
+  await renderRatingCard();
   await loadDeals();
   await loadStats();
+});
+
+// ---------- Closing milestones ----------
+const DEFAULT_MILESTONES = ['Contract Signed','Earnest Money Deposited','Title Search Ordered','Inspection Complete','Clear to Close'];
+
+function renderMilestones(){
+  const card = document.getElementById('milestonesCard');
+  if(!activeDeal || (activeDeal.status !== 'under_contract' && activeDeal.status !== 'closed')){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  let milestones = Array.isArray(activeDeal.milestones) && activeDeal.milestones.length
+    ? activeDeal.milestones
+    : DEFAULT_MILESTONES.map(step=> ({ step, done:false, date:null }));
+  const list = document.getElementById('milestonesList');
+  list.innerHTML = milestones.map((m,idx)=> `
+    <div class="milestone-row ${m.done?'done':''}">
+      <button class="milestone-check ${m.done?'done':''}" ${roomIsOwner ? `onclick="toggleMilestone(${idx})"` : 'disabled'} style="border:none;cursor:${roomIsOwner?'pointer':'default'};">${m.done?'✓':''}</button>
+      <div style="flex:1;">
+        <div>${m.step}</div>
+        ${m.done && m.date ? `<div style="font-size:11px;color:#8a8f7d;">${new Date(m.date).toLocaleDateString()}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function toggleMilestone(index){
+  if(!activeDeal || !roomIsOwner) return;
+  let milestones = Array.isArray(activeDeal.milestones) && activeDeal.milestones.length
+    ? [...activeDeal.milestones]
+    : DEFAULT_MILESTONES.map(step=> ({ step, done:false, date:null }));
+  milestones[index] = { ...milestones[index], done: !milestones[index].done, date: !milestones[index].done ? new Date().toISOString() : null };
+  const { error } = await sb.from('deals').update({ milestones }).eq('id', activeDeal.id);
+  if(error){ toast('Error: ' + error.message); return; }
+  activeDeal.milestones = milestones;
+  renderMilestones();
+}
+
+// ---------- Ratings ----------
+let selectedStars = 0;
+document.getElementById('starPicker').addEventListener('click', e=>{
+  const star = e.target.closest('span');
+  if(!star) return;
+  selectedStars = parseInt(star.dataset.star);
+  document.querySelectorAll('#starPicker span').forEach(s=> s.classList.toggle('on', parseInt(s.dataset.star) <= selectedStars));
+});
+
+async function renderRatingCard(){
+  const card = document.getElementById('ratingCard');
+  if(!activeDeal || activeDeal.status !== 'closed' || !currentUser){ card.style.display = 'none'; return; }
+  const isOwner = roomIsOwner;
+  const ratedId = isOwner ? null : activeDeal.submitted_by;
+  // Owner rates the buyer who won the deal; buyer rates the wholesaler
+  let counterpartyId = ratedId;
+  if(isOwner){
+    const { data: acceptedOffer } = await sb.from('offers').select('buyer_id').eq('deal_id', activeDeal.id).eq('status','accepted').maybeSingle();
+    counterpartyId = acceptedOffer ? acceptedOffer.buyer_id : null;
+  }
+  if(!counterpartyId){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('ratingHint').textContent = isOwner ? 'Rate the buyer on this transaction.' : 'Rate the wholesaler on this transaction.';
+
+  const { data: existing } = await sb.from('ratings').select('*').eq('deal_id', activeDeal.id).eq('rater_id', currentUser.id).maybeSingle();
+  if(existing){
+    document.getElementById('starPicker').style.display = 'none';
+    document.getElementById('ratingComment').style.display = 'none';
+    document.getElementById('submitRatingBtn').style.display = 'none';
+    document.getElementById('ratingSubmitted').style.display = 'block';
+  } else {
+    document.getElementById('starPicker').style.display = 'flex';
+    document.getElementById('ratingComment').style.display = 'block';
+    document.getElementById('submitRatingBtn').style.display = 'block';
+    document.getElementById('ratingSubmitted').style.display = 'none';
+    selectedStars = 0;
+    document.querySelectorAll('#starPicker span').forEach(s=> s.classList.remove('on'));
+  }
+  card.dataset.counterpartyId = counterpartyId;
+}
+
+document.getElementById('submitRatingBtn').addEventListener('click', async ()=>{
+  if(!activeDeal || !currentUser) return;
+  if(!selectedStars){ toast('Pick a star rating first'); return; }
+  const counterpartyId = document.getElementById('ratingCard').dataset.counterpartyId;
+  if(!counterpartyId) return;
+  const { error } = await sb.from('ratings').insert({
+    deal_id: activeDeal.id,
+    rater_id: currentUser.id,
+    rated_id: counterpartyId,
+    stars: selectedStars,
+    comment: document.getElementById('ratingComment').value.trim()
+  });
+  if(error){ toast('Error: ' + error.message); return; }
+  toast('Rating submitted — thank you');
+  await renderRatingCard();
 });
 
 async function loadOffers(isOwner){
@@ -1149,7 +1452,7 @@ async function loadOffers(isOwner){
   let contactMap = {};
   if(isOwner){
     const buyerIds = [...new Set(data.map(o=>o.buyer_id))];
-    const { data: profs } = await sb.from('profiles').select('id, full_name, email, phone').in('id', buyerIds);
+    const { data: profs } = await sb.from('profiles').select('id, full_name, email, phone, is_verified').in('id', buyerIds);
     (profs||[]).forEach(p=> contactMap[p.id] = p);
   }
 
@@ -1157,7 +1460,7 @@ async function loadOffers(isOwner){
     const c = contactMap[o.buyer_id];
     const contactHtml = (isOwner && c) ? `
       <div class="offer-contact">
-        <span><strong>${c.full_name||'Buyer'}</strong></span>
+        <span><strong>${c.full_name||'Buyer'}</strong>${c.is_verified ? ' <span class="verified-badge">✓ Verified</span>' : ''}</span>
         ${c.email ? `<span>${'\u2709'} <a href="mailto:${c.email}">${c.email}</a></span>` : ''}
         ${c.phone ? `<span>${'\u260E'} <a href="tel:${c.phone}">${c.phone}</a></span>` : ''}
         ${o.note ? `<span style="margin-top:4px;color:#8a8f7d;">"${o.note}"</span>` : ''}
@@ -1191,6 +1494,7 @@ async function setOfferStatus(offerId, status){
     activeDeal.status = 'under_contract';
     document.getElementById('r_meta').textContent = (activeDeal.sub||'') + ' · ' + activeDeal.market + ' · UNDER CONTRACT';
     renderClosingCard();
+    renderMilestones();
   }
   toast(status==='accepted' ? 'Offer accepted' : 'Offer rejected');
   await loadOffers(roomIsOwner);
@@ -1421,8 +1725,18 @@ async function loadDashboard(){
     }
 
     let html = '';
+
+    const { data: savedRows } = await sb.from('favorites').select('deal_id, deals(*)').eq('user_id', currentUser.id).order('created_at', { ascending:false });
+    const savedDeals = (savedRows||[]).map(r=>r.deals).filter(Boolean);
+    html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:6px 0 10px;">Saved deals (${savedDeals.length})</h3>`;
+    if(savedDeals.length){
+      html += savedDeals.map(d=> dealCardHtml(d, { showMatch:true, clickable:true, showFavorite:true, favoriteIds: favoriteIdSet, actions:`<div class="deal-actions"><button class="btn-sm primary" onclick="openDealRoom('${d.id}')">View</button></div>` })).join('');
+    } else {
+      html += '<div class="empty">Tap the star on any deal in the Deal Feed to save it here.</div>';
+    }
+
     if(topMatches.length){
-      html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:6px 0 10px;">Top matches you haven't offered on</h3>`;
+      html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">Top matches you haven't offered on</h3>`;
       html += topMatches.slice(0,5).map(d=> dealCardHtml(d, { showMatch:true, clickable:true, actions:`<div class="deal-actions"><button class="btn-sm primary" onclick="openDealRoom('${d.id}')">View &amp; offer</button></div>` })).join('');
     }
     html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">Your offers timeline (${offers.length})</h3>`;
@@ -1449,6 +1763,13 @@ async function loadDashboard(){
 }
 
 // ---------- Admin ----------
+async function toggleVerified(userId, currentlyVerified){
+  const { error } = await sb.from('profiles').update({ is_verified: !currentlyVerified }).eq('id', userId);
+  if(error){ toast('Error: ' + error.message); return; }
+  toast(currentlyVerified ? 'User unverified' : 'User verified');
+  await loadAdmin();
+}
+
 async function loadAdmin(){
   if(!currentProfile?.is_admin) return;
   const statsBox = document.getElementById('adminStats');
@@ -1458,14 +1779,15 @@ async function loadAdmin(){
   dealsBox.innerHTML = '<div class="empty">Loading…</div>';
   usersBox.innerHTML = '<div class="empty">Loading…</div>';
 
-  const [{ data: profiles, error: profErr }, { data: deals, error: dealErr }, { data: offers, error: offerErr }] = await Promise.all([
+  const [{ data: profiles, error: profErr }, { data: deals, error: dealErr }, { data: offers, error: offerErr }, { data: ratings, error: ratingErr }] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending:false }),
     sb.from('deals').select('*').order('created_at', { ascending:false }),
-    sb.from('offers').select('*')
+    sb.from('offers').select('*'),
+    sb.from('ratings').select('*')
   ]);
 
-  if(profErr || dealErr || offerErr){
-    const msg = (profErr||dealErr||offerErr).message;
+  if(profErr || dealErr || offerErr || ratingErr){
+    const msg = (profErr||dealErr||offerErr||ratingErr).message;
     statsBox.innerHTML = ''; dealsBox.innerHTML = '<div class="empty">'+msg+'</div>'; usersBox.innerHTML='';
     return;
   }
@@ -1473,6 +1795,7 @@ async function loadAdmin(){
   const allProfiles = profiles || [];
   const allDeals = deals || [];
   const allOffers = offers || [];
+  const allRatings = ratings || [];
   const profileMap = {};
   allProfiles.forEach(p=> profileMap[p.id] = p);
 
@@ -1537,22 +1860,36 @@ async function loadAdmin(){
   document.getElementById('adminCount').textContent = allProfiles.length + ' users';
   if(!allProfiles.length){ usersBox.innerHTML = '<div class="empty">No users yet.</div>'; return; }
   const dealCountByUser = {};
-  allDeals.forEach(d=>{ dealCountByUser[d.submitted_by] = (dealCountByUser[d.submitted_by]||0) + 1; });
+  const closedCountByUser = {};
+  allDeals.forEach(d=>{
+    dealCountByUser[d.submitted_by] = (dealCountByUser[d.submitted_by]||0) + 1;
+    if(d.status==='closed') closedCountByUser[d.submitted_by] = (closedCountByUser[d.submitted_by]||0) + 1;
+  });
   const offerCountByUser = {};
   allOffers.forEach(o=>{ offerCountByUser[o.buyer_id] = (offerCountByUser[o.buyer_id]||0) + 1; });
+  const ratingSumByUser = {};
+  const ratingCountByUser = {};
+  allRatings.forEach(r=>{
+    ratingSumByUser[r.rated_id] = (ratingSumByUser[r.rated_id]||0) + r.stars;
+    ratingCountByUser[r.rated_id] = (ratingCountByUser[r.rated_id]||0) + 1;
+  });
   usersBox.innerHTML = allProfiles.map(p=>{
     const joined = p.created_at ? new Date(p.created_at).toLocaleDateString() : '—';
     const activity = p.role==='wholesaler'
-      ? `${dealCountByUser[p.id]||0} deals posted`
+      ? `${dealCountByUser[p.id]||0} deals posted · ${closedCountByUser[p.id]||0} closed`
       : `${offerCountByUser[p.id]||0} offers made`;
+    const avgRating = ratingCountByUser[p.id] ? (ratingSumByUser[p.id] / ratingCountByUser[p.id]).toFixed(1) : null;
     return `
     <div class="admin-row">
       <div>
-        <div class="name">${p.full_name || '(no name)'}</div>
+        <div class="name">${p.full_name || '(no name)'}${p.is_verified ? ' <span class="verified-badge">✓ Verified</span>' : ''}</div>
         <div class="meta">${p.email||''}${p.phone ? ' · '+p.phone : ''}</div>
-        <div class="meta">Joined ${joined} · ${activity}</div>
+        <div class="meta">Joined ${joined} · ${activity}${avgRating ? ' · ★'+avgRating+' ('+ratingCountByUser[p.id]+')' : ''}</div>
       </div>
-      <div class="role-badge">${p.role}${p.is_admin ? ' · admin' : ''}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <div class="role-badge">${p.role}${p.is_admin ? ' · admin' : ''}</div>
+        <button class="btn-sm" style="padding:5px 10px;font-size:11px;" onclick="toggleVerified('${p.id}', ${p.is_verified})">${p.is_verified ? 'Unverify' : 'Verify'}</button>
+      </div>
     </div>`;
   }).join('');
 }
