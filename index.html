@@ -60,6 +60,12 @@
   .deal-addr{font-family:var(--font-display);font-weight:700;font-size:15.5px;letter-spacing:-0.01em;}
   .deal-sub{font-size:12.5px;color:#8a8f7d;margin-top:2px;}
   .match-badge{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--green-deep);background:rgba(95,207,25,0.13);border-radius:100px;padding:4px 10px;flex:none;}
+  .confidence-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:12px;font-weight:700;border-radius:100px;padding:6px 12px;}
+  .confidence-badge.high{background:rgba(95,207,25,0.18);color:#dff5c9;}
+  .confidence-badge.mid{background:rgba(224,167,44,0.2);color:#fbe6b8;}
+  .confidence-badge.low{background:rgba(192,57,43,0.2);color:#f5c9c4;}
+  .photo-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;border:1px solid var(--line);}
+  .rehab-row,.comp-row{display:flex;justify-content:space-between;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:13px;}
   .status-badge{font-family:var(--font-mono);font-size:11px;font-weight:700;border-radius:100px;padding:4px 10px;flex:none;text-transform:uppercase;}
   .status-badge.active{color:var(--green-deep);background:rgba(95,207,25,0.13);}
   .status-badge.inactive{color:#8a8f7d;background:#f1f4e8;}
@@ -314,6 +320,7 @@
     <div class="room-header">
       <div class="addr" id="r_addr"></div>
       <div class="meta" id="r_meta"></div>
+      <div id="r_confidence" style="margin-top:10px;"></div>
     </div>
     <div class="card">
       <h3>Deal snapshot</h3>
@@ -324,6 +331,52 @@
         <div class="dm"><b id="r_rehab"></b><span>Rehab</span></div>
       </div>
     </div>
+
+    <div class="card" id="photosCard">
+      <h3>Photos</h3>
+      <div id="photosGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;"></div>
+      <div id="photoUploadRow" style="display:none;">
+        <input type="file" id="photoInput" accept="image/*" multiple style="margin-bottom:10px;width:100%;">
+        <button class="btn-ghost-full" id="uploadPhotosBtn" style="margin-top:0;">Upload photos</button>
+      </div>
+    </div>
+
+    <div class="card" id="rehabCard">
+      <h3>Rehab breakdown</h3>
+      <p class="hint">Itemized estimate builds buyer confidence in the numbers.</p>
+      <div id="rehabList" style="margin-bottom:12px;"></div>
+      <div id="rehabAddRow" style="display:none;">
+        <div class="range-row">
+          <input type="text" id="rehab_cat" placeholder="Category (e.g. Roof)" style="flex:2;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
+          <input type="number" id="rehab_cost" placeholder="Cost" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
+          <button class="btn-sm primary" style="flex:none;padding:11px 16px;" id="addRehabItem">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="compsCard">
+      <h3>Comparable sales</h3>
+      <div id="compsList" style="margin-bottom:12px;"></div>
+      <div id="compsAddRow" style="display:none;">
+        <div class="field"><label>Address</label><input type="text" id="comp_addr" placeholder="123 Similar St"></div>
+        <div class="range-row">
+          <div class="field" style="flex:1;"><label>Sale price</label><input type="number" id="comp_price" placeholder="335000"></div>
+          <div class="field" style="flex:1;"><label>Sqft</label><input type="number" id="comp_sqft" placeholder="1650"></div>
+        </div>
+        <div class="field"><label>Sale date</label><input type="date" id="comp_date"></div>
+        <button class="btn-ghost-full" id="addCompBtn" style="margin-top:0;">Add comp</button>
+      </div>
+    </div>
+
+    <div class="card" id="historyCard">
+      <h3>Property history</h3>
+      <div id="historyView" style="font-size:13.5px;color:#5a5f52;line-height:1.5;"></div>
+      <div id="historyEditRow" style="display:none;">
+        <textarea id="ph_text" rows="4" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);margin-bottom:10px;" placeholder="Last sold in 2018 for $210K. Owned by the same family since. No major renovations on record."></textarea>
+        <button class="btn-ghost-full" id="saveHistoryBtn" style="margin-top:0;">Save property history</button>
+      </div>
+    </div>
+
     <div class="card" id="offerFormCard">
       <h3>Make an offer</h3>
       <p class="hint">Cash or terms — this goes straight to the wholesaler, along with your contact info.</p>
@@ -843,6 +896,7 @@ async function openDealRoom(id){
   setView('room');
   await loadOffers(roomIsOwner);
   renderClosingCard();
+  await loadTrustLayer();
   await setupMessaging();
 }
 
@@ -888,6 +942,173 @@ function updateCommissionPreview(){
   document.getElementById('c_commission').textContent = '$' + Math.round(fee * 0.10).toLocaleString();
 }
 document.getElementById('c_fee').addEventListener('input', updateCommissionPreview);
+
+// ---------- Trust layer: confidence score, photos, rehab breakdown, comps, property history ----------
+let currentPhotos = [];
+let currentComps = [];
+
+function computeConfidence(){
+  let score = 0;
+  if(currentPhotos.length >= 3) score += 25;
+  else if(currentPhotos.length >= 1) score += 12;
+  if(currentComps.length >= 2) score += 25;
+  else if(currentComps.length >= 1) score += 12;
+  const rehabItems = Array.isArray(activeDeal?.rehab_breakdown) ? activeDeal.rehab_breakdown : [];
+  if(rehabItems.length) score += 25;
+  if(activeDeal?.property_history && activeDeal.property_history.trim()) score += 25;
+  return score;
+}
+
+function renderConfidenceBadge(){
+  const score = computeConfidence();
+  const tier = score >= 75 ? 'high' : (score >= 40 ? 'mid' : 'low');
+  const label = score >= 75 ? 'Strong' : (score >= 40 ? 'Building' : 'Early');
+  document.getElementById('r_confidence').innerHTML = `<span class="confidence-badge ${tier}">Deal confidence: ${score}% · ${label}</span>`;
+}
+
+async function loadTrustLayer(){
+  if(!activeDeal) return;
+
+  // Photos
+  const { data: photos } = await sb.from('deal_photos').select('*').eq('deal_id', activeDeal.id).order('created_at', { ascending:true });
+  currentPhotos = photos || [];
+  const photosGrid = document.getElementById('photosGrid');
+  photosGrid.innerHTML = currentPhotos.length
+    ? currentPhotos.map(p=> `<div style="position:relative;"><img class="photo-thumb" src="${p.url}">${roomIsOwner ? `<button onclick="deletePhoto('${p.id}')" style="position:absolute;top:4px;right:4px;background:rgba(20,22,15,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;">✕</button>` : ''}</div>`).join('')
+    : '<div class="empty" style="grid-column:1/-1;">No photos yet.</div>';
+  document.getElementById('photoUploadRow').style.display = roomIsOwner ? 'block' : 'none';
+
+  // Comps
+  const { data: comps } = await sb.from('comps').select('*').eq('deal_id', activeDeal.id).order('created_at', { ascending:false });
+  currentComps = comps || [];
+  const compsList = document.getElementById('compsList');
+  compsList.innerHTML = currentComps.length
+    ? currentComps.map(c=> `
+      <div class="comp-row">
+        <div><strong>${c.address||'Comp'}</strong><br><span style="color:#8a8f7d;">${c.sqft ? c.sqft+' sqft · ' : ''}${c.sale_date ? new Date(c.sale_date).toLocaleDateString() : ''}</span></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-family:var(--font-mono);font-weight:700;">$${Number(c.sale_price||0).toLocaleString()}</span>
+          ${roomIsOwner ? `<button onclick="deleteComp('${c.id}')" style="background:none;border:none;color:var(--danger);font-size:12px;">✕</button>` : ''}
+        </div>
+      </div>`).join('')
+    : '<div class="empty">No comps added yet.</div>';
+  document.getElementById('compsAddRow').style.display = roomIsOwner ? 'block' : 'none';
+
+  // Rehab breakdown
+  const rehabItems = Array.isArray(activeDeal.rehab_breakdown) ? activeDeal.rehab_breakdown : [];
+  const rehabList = document.getElementById('rehabList');
+  const rehabTotal = rehabItems.reduce((s,i)=> s + (Number(i.cost)||0), 0);
+  rehabList.innerHTML = rehabItems.length
+    ? rehabItems.map((item,idx)=> `
+      <div class="rehab-row">
+        <span>${item.category}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-family:var(--font-mono);font-weight:700;">$${Number(item.cost||0).toLocaleString()}</span>
+          ${roomIsOwner ? `<button onclick="removeRehabItem(${idx})" style="background:none;border:none;color:var(--danger);font-size:12px;">✕</button>` : ''}
+        </div>
+      </div>`).join('') + `<div class="rehab-row" style="background:transparent;border-style:dashed;"><strong>Total</strong><strong style="font-family:var(--font-mono);">$${rehabTotal.toLocaleString()}</strong></div>`
+    : '<div class="empty">No itemized breakdown yet.</div>';
+  document.getElementById('rehabAddRow').style.display = roomIsOwner ? 'block' : 'none';
+
+  // Property history
+  const historyView = document.getElementById('historyView');
+  const historyEditRow = document.getElementById('historyEditRow');
+  if(roomIsOwner){
+    historyView.style.display = 'none';
+    historyEditRow.style.display = 'block';
+    document.getElementById('ph_text').value = activeDeal.property_history || '';
+  } else {
+    historyEditRow.style.display = 'none';
+    historyView.style.display = 'block';
+    historyView.textContent = activeDeal.property_history && activeDeal.property_history.trim()
+      ? activeDeal.property_history
+      : 'No property history provided yet.';
+  }
+
+  renderConfidenceBadge();
+}
+
+async function deletePhoto(photoId){
+  const { error } = await sb.from('deal_photos').delete().eq('id', photoId);
+  if(error){ toast('Error: ' + error.message); return; }
+  await loadTrustLayer();
+}
+
+document.getElementById('uploadPhotosBtn').addEventListener('click', async ()=>{
+  if(!activeDeal || !roomIsOwner) return;
+  const input = document.getElementById('photoInput');
+  const files = Array.from(input.files || []);
+  if(!files.length){ toast('Choose at least one photo first'); return; }
+  toast('Uploading ' + files.length + ' photo(s)…');
+  for(const file of files){
+    const path = `${activeDeal.id}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await sb.storage.from('deal-photos').upload(path, file);
+    if(uploadError){ toast('Upload error: ' + uploadError.message); continue; }
+    const { data: publicUrlData } = sb.storage.from('deal-photos').getPublicUrl(path);
+    await sb.from('deal_photos').insert({ deal_id: activeDeal.id, url: publicUrlData.publicUrl });
+  }
+  input.value = '';
+  toast('Photos uploaded');
+  await loadTrustLayer();
+});
+
+async function deleteComp(compId){
+  const { error } = await sb.from('comps').delete().eq('id', compId);
+  if(error){ toast('Error: ' + error.message); return; }
+  await loadTrustLayer();
+}
+
+document.getElementById('addCompBtn').addEventListener('click', async ()=>{
+  if(!activeDeal || !roomIsOwner) return;
+  const payload = {
+    deal_id: activeDeal.id,
+    address: document.getElementById('comp_addr').value.trim(),
+    sale_price: parseFloat(document.getElementById('comp_price').value) || null,
+    sqft: parseFloat(document.getElementById('comp_sqft').value) || null,
+    sale_date: document.getElementById('comp_date').value || null
+  };
+  if(!payload.address){ toast('Comp address is required'); return; }
+  const { error } = await sb.from('comps').insert(payload);
+  if(error){ toast('Error: ' + error.message); return; }
+  ['comp_addr','comp_price','comp_sqft','comp_date'].forEach(id=> document.getElementById(id).value='');
+  toast('Comp added');
+  await loadTrustLayer();
+});
+
+async function removeRehabItem(index){
+  if(!activeDeal || !roomIsOwner) return;
+  const items = Array.isArray(activeDeal.rehab_breakdown) ? [...activeDeal.rehab_breakdown] : [];
+  items.splice(index, 1);
+  const { error } = await sb.from('deals').update({ rehab_breakdown: items }).eq('id', activeDeal.id);
+  if(error){ toast('Error: ' + error.message); return; }
+  activeDeal.rehab_breakdown = items;
+  await loadTrustLayer();
+}
+
+document.getElementById('addRehabItem').addEventListener('click', async ()=>{
+  if(!activeDeal || !roomIsOwner) return;
+  const cat = document.getElementById('rehab_cat').value.trim();
+  const cost = parseFloat(document.getElementById('rehab_cost').value);
+  if(!cat || !cost){ toast('Enter a category and cost'); return; }
+  const items = Array.isArray(activeDeal.rehab_breakdown) ? [...activeDeal.rehab_breakdown] : [];
+  items.push({ category: cat, cost });
+  const { error } = await sb.from('deals').update({ rehab_breakdown: items }).eq('id', activeDeal.id);
+  if(error){ toast('Error: ' + error.message); return; }
+  activeDeal.rehab_breakdown = items;
+  document.getElementById('rehab_cat').value = '';
+  document.getElementById('rehab_cost').value = '';
+  await loadTrustLayer();
+});
+
+document.getElementById('saveHistoryBtn').addEventListener('click', async ()=>{
+  if(!activeDeal || !roomIsOwner) return;
+  const text = document.getElementById('ph_text').value.trim();
+  const { error } = await sb.from('deals').update({ property_history: text }).eq('id', activeDeal.id);
+  if(error){ toast('Error: ' + error.message); return; }
+  activeDeal.property_history = text;
+  toast('Property history saved');
+  renderConfidenceBadge();
+});
 
 document.getElementById('saveClosing').addEventListener('click', async ()=>{
   if(!activeDeal || !roomIsOwner) return;
