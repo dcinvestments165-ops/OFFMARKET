@@ -110,6 +110,7 @@
   .btn-full{width:100%;border:none;border-radius:12px;padding:14px;font-weight:700;font-size:14px;background:linear-gradient(100deg,var(--lime),var(--green-mid) 50%,var(--green));color:var(--ink);box-shadow:0 8px 18px -8px rgba(95,207,25,0.55);}
   .btn-full[disabled]{opacity:0.5;}
   .btn-ghost-full{width:100%;border:1px solid var(--line);background:var(--white);border-radius:12px;padding:13px;font-weight:700;font-size:14px;color:var(--charcoal-soft);margin-top:8px;}
+  .btn-ghost-full[disabled]{opacity:0.4;cursor:not-allowed;}
 
   .room-header{background:var(--charcoal);color:var(--white);border-radius:16px;padding:18px;margin-bottom:14px;}
   .room-header .addr{font-family:var(--font-display);font-size:18px;font-weight:700;}
@@ -492,11 +493,15 @@
             <select id="c_emStatus"><option value="not_submitted">Not submitted</option><option value="submitted">Submitted</option><option value="verified">Verified by title</option></select>
           </div>
         </div>
-        <div class="card" style="background:var(--paper);border-style:dashed;margin-bottom:14px;">
-          <div class="dm"><b id="c_commission">$0</b><span>Vaultlist commission (10% of assignment fee) — tracked only, not billed yet</span></div>
+        <div class="card" id="commissionPayCard" style="background:var(--paper);border-style:dashed;margin-bottom:14px;">
+          <div class="dm" style="margin-bottom:10px;"><b id="c_commission">$0</b><span>Vaultlist commission owed (10% of assignment fee)</span></div>
+          <p class="hint" style="margin-bottom:10px;">Send via Zelle/Venmo to <strong>[add your payment handle here]</strong>, then confirm below.</p>
+          <div id="commissionStatusBadge" style="margin-bottom:10px;"></div>
+          <button class="btn-ghost-full" id="markCommissionPaid" style="margin-top:0;">Mark commission as paid</button>
         </div>
         <button class="btn-full" id="saveClosing" style="margin-bottom:8px;">Save closing details</button>
-        <button class="btn-ghost-full" id="markClosed" style="margin-top:0;">Mark deal as closed</button>
+        <button class="btn-ghost-full" id="markClosed" style="margin-top:0;" disabled>Mark deal as closed</button>
+        <p class="hint" id="closeGateHint" style="margin-top:8px;margin-bottom:0;">Confirm commission is paid before marking this deal closed.</p>
       </div>
       <div id="closingBuyerView" style="display:none;">
         <div class="doc-row"><div><span class="name" id="cb_title">Title company TBD</span></div></div>
@@ -586,6 +591,12 @@
     </div>
     <div class="field"><label>Email</label><input type="email" id="a_email" placeholder="you@email.com"></div>
     <div class="field"><label>Password</label><input type="password" id="a_pass" placeholder="At least 6 characters"></div>
+    <div id="termsCheckRow" style="display:none;margin-bottom:14px;">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#5a5f52;cursor:pointer;">
+        <input type="checkbox" id="a_terms" style="margin-top:2px;">
+        <span>I agree to the <a href="#" onclick="event.preventDefault();openTerms();" style="color:var(--green-deep);font-weight:600;">Terms &amp; Conditions</a>, including the 10% commission obligation on deals originated through Vaultlist.</span>
+      </label>
+    </div>
     <div class="auth-err" id="authErr"></div>
     <button class="btn-full" id="authSubmit" onclick="submitAuth()">Sign in</button>
   </div>
@@ -609,6 +620,42 @@
     <div class="auth-err" id="profileErr"></div>
     <div id="profileMsg" style="font-size:12px;color:var(--green-deep);margin-bottom:10px;min-height:14px;"></div>
     <button class="btn-full" id="profileSave">Save changes</button>
+    <p style="text-align:center;margin-top:14px;font-size:12px;"><a href="#" onclick="event.preventDefault();openTerms();" style="color:#8a8f7d;">View Terms &amp; Conditions</a></p>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="termsModal">
+  <div class="modal" style="max-width:520px;">
+    <button class="modal-close" onclick="closeTerms()">Close</button>
+    <h3>Vaultlist Terms &amp; Conditions</h3>
+    <p class="hint">Last updated July 2026. Please read before creating an account.</p>
+    <div style="font-size:12.5px;line-height:1.6;color:#3d4235;max-height:50vh;overflow-y:auto;padding-right:6px;">
+      <p style="margin-bottom:10px;"><strong>1. What Vaultlist Is</strong><br>
+      Vaultlist is a technology platform that connects real estate wholesalers ("Wholesalers") with cash buyers and investors ("Buyers"). Vaultlist is not a licensed real estate brokerage, title company, escrow agent, or law firm, and does not provide real estate, legal, financial, or investment advice. All deal information, comparable sales, rehab estimates, and property details are supplied by the users who post them and are not independently verified by Vaultlist.</p>
+
+      <p style="margin-bottom:10px;"><strong>2. Commission Obligation</strong><br>
+      By creating a Wholesaler account, you agree that Vaultlist is entitled to a commission equal to <strong>10% of the assignment fee</strong> (or equivalent profit) on any transaction that is originated, matched, or substantially facilitated through the Vaultlist platform, regardless of whether the transaction ultimately closes on-platform, off-platform, or through a side agreement with a Buyer discovered via Vaultlist. This obligation applies to the specific deal and Buyer relationship formed through the platform and survives any attempt to complete the transaction outside of Vaultlist to avoid this fee.</p>
+
+      <p style="margin-bottom:10px;"><strong>3. Payment Terms</strong><br>
+      Commission is due upon closing of the transaction. Wholesalers are responsible for marking deals as closed accurately and promptly, and for remitting the commission owed using the payment method specified in the app. Failure to pay commission owed may result in account suspension, permanent ban from the platform, and pursuit of the amount owed through any lawful means available to Vaultlist.</p>
+
+      <p style="margin-bottom:10px;"><strong>4. User Conduct</strong><br>
+      Users agree not to use information obtained through Vaultlist (including but not limited to Buyer or Wholesaler contact information) to circumvent the platform or avoid commission obligations. Vaultlist reserves the right to withhold direct contact information between parties until commission obligations tied to a specific transaction are confirmed satisfied.</p>
+
+      <p style="margin-bottom:10px;"><strong>5. No Warranty</strong><br>
+      Vaultlist provides the platform "as is" without warranty of any kind. Deal data, financial estimates, comparable sales, and property conditions are user-submitted and not verified. Users are solely responsible for conducting their own due diligence, inspections, and verification before entering into any transaction.</p>
+
+      <p style="margin-bottom:10px;"><strong>6. Limitation of Liability</strong><br>
+      Vaultlist is not a party to any transaction between a Wholesaler and a Buyer and is not liable for any loss, damage, dispute, or failed transaction arising between users of the platform. Users transact with each other at their own risk.</p>
+
+      <p style="margin-bottom:10px;"><strong>7. Account Termination</strong><br>
+      Vaultlist may suspend or terminate any account, at its discretion, for violation of these terms, non-payment of commission owed, fraudulent activity, or any conduct deemed harmful to the platform or its users.</p>
+
+      <p style="margin-bottom:10px;"><strong>8. Changes to These Terms</strong><br>
+      Vaultlist may update these terms from time to time. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
+
+      <p style="margin-bottom:0;color:#8a8f7d;"><em>This document is a starting template and has not been reviewed by an attorney. It is provided for early-stage platform use and should be reviewed by qualified legal counsel before being relied upon for enforcement of payment obligations or dispute resolution.</em></p>
+    </div>
   </div>
 </div>
 
@@ -677,9 +724,12 @@ function setAuthMode(mode){
   document.getElementById('toggleSignin').classList.toggle('on', mode==='signin');
   document.getElementById('toggleSignup').classList.toggle('on', mode==='signup');
   document.getElementById('signupFields').style.display = mode==='signup' ? 'block':'none';
+  document.getElementById('termsCheckRow').style.display = mode==='signup' ? 'block':'none';
   document.getElementById('authTitle').textContent = mode==='signin' ? 'Sign in' : 'Create account';
   document.getElementById('authSubmit').textContent = mode==='signin' ? 'Sign in' : 'Create account';
 }
+function openTerms(){ document.getElementById('termsModal').classList.add('open'); }
+function closeTerms(){ document.getElementById('termsModal').classList.remove('open'); }
 document.getElementById('authBtn').addEventListener('click', ()=>{
   if(currentUser){ sb.auth.signOut(); } else { openAuth(); }
 });
@@ -690,6 +740,10 @@ async function submitAuth(){
   const errEl = document.getElementById('authErr');
   errEl.textContent = '';
   if(!email || !pass){ errEl.textContent = 'Enter email and password.'; return; }
+  if(authMode === 'signup' && !document.getElementById('a_terms').checked){
+    errEl.textContent = 'You must agree to the Terms & Conditions to create an account.';
+    return;
+  }
   const submitBtn = document.getElementById('authSubmit');
   submitBtn.disabled = true;
   try{
@@ -697,7 +751,7 @@ async function submitAuth(){
       const name = document.getElementById('a_name').value.trim();
       const phone = document.getElementById('a_phone').value.trim();
       const role = document.getElementById('a_role').value;
-      const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name, role, phone } } });
+      const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name, role, phone, agreed_to_terms:true } } });
       if(error){
         console.error('Signup error:', error);
         errEl.textContent = error.message || error.error_description || 'Signup failed — check the browser console for details.';
@@ -1200,6 +1254,14 @@ function renderClosingCard(){
     document.getElementById('c_emAmount').value = activeDeal.earnest_money_amount || '';
     document.getElementById('c_emStatus').value = activeDeal.earnest_money_status || 'not_submitted';
     updateCommissionPreview();
+    const commissionPaid = activeDeal.commission_status === 'paid';
+    document.getElementById('commissionStatusBadge').innerHTML = commissionPaid
+      ? `<span class="verified-badge">✓ Commission paid</span>`
+      : `<span class="verified-badge" style="color:#a3720c;background:#fbeecb;">Commission pending</span>`;
+    document.getElementById('markCommissionPaid').style.display = commissionPaid ? 'none' : 'block';
+    const closeBtn = document.getElementById('markClosed');
+    closeBtn.disabled = !commissionPaid;
+    document.getElementById('closeGateHint').style.display = commissionPaid ? 'none' : 'block';
   } else {
     document.getElementById('closingHint').textContent = 'This deal is under contract.';
     ownerView.style.display = 'none';
@@ -1437,8 +1499,20 @@ document.getElementById('saveClosing').addEventListener('click', async ()=>{
   toast('Closing details saved');
 });
 
+document.getElementById('markCommissionPaid').addEventListener('click', async ()=>{
+  if(!activeDeal || !roomIsOwner) return;
+  if(!confirm("Confirm you have sent the 10% commission owed to Vaultlist? This unlocks the buyer's direct contact info and allows you to mark this deal closed.")) return;
+  const { error } = await sb.from('deals').update({ commission_status:'paid' }).eq('id', activeDeal.id);
+  if(error){ toast('Error: ' + error.message); return; }
+  activeDeal.commission_status = 'paid';
+  toast('Commission marked as paid — contact info unlocked');
+  renderClosingCard();
+  await loadOffers(true);
+});
+
 document.getElementById('markClosed').addEventListener('click', async ()=>{
   if(!activeDeal || !roomIsOwner) return;
+  if(activeDeal.commission_status !== 'paid'){ toast('Confirm commission is paid before closing this deal'); return; }
   if(!confirm('Mark this deal as fully closed? This finalizes the transaction record.')) return;
   const closedAt = new Date().toISOString();
   const { error } = await sb.from('deals').update({ status:'closed', closed_at:closedAt }).eq('id', activeDeal.id);
@@ -1561,11 +1635,14 @@ async function loadOffers(isOwner){
 
   box.innerHTML = data.map(o=>{
     const c = contactMap[o.buyer_id];
+    const contactUnlocked = activeDeal.commission_status === 'paid';
     const contactHtml = (isOwner && c) ? `
       <div class="offer-contact">
         <span><strong>${c.full_name||'Buyer'}</strong>${c.is_verified ? ' <span class="verified-badge">✓ Verified</span>' : ''}</span>
-        ${c.email ? `<span>${'\u2709'} <a href="mailto:${c.email}">${c.email}</a></span>` : ''}
-        ${c.phone ? `<span>${'\u260E'} <a href="tel:${c.phone}">${c.phone}</a></span>` : ''}
+        ${contactUnlocked ? `
+          ${c.email ? `<span>${'\u2709'} <a href="mailto:${c.email}">${c.email}</a></span>` : ''}
+          ${c.phone ? `<span>${'\u260E'} <a href="tel:${c.phone}">${c.phone}</a></span>` : ''}
+        ` : `<span style="color:#8a8f7d;font-style:italic;">Direct contact info unlocks once commission is confirmed paid — use Message below to coordinate for now.</span>`}
         ${o.note ? `<span style="margin-top:4px;color:#8a8f7d;">"${o.note}"</span>` : ''}
       </div>` : '';
     const ownerActions = (isOwner && o.status==='pending') ? `
