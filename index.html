@@ -460,6 +460,11 @@
       </div>
     </div>
 
+    <div class="card" id="aiMatchCard" style="display:none;background:linear-gradient(180deg,rgba(229,249,39,0.08),rgba(95,207,25,0.04));border-color:rgba(95,207,25,0.3);">
+      <h3>🤖 AI Match Analysis</h3>
+      <div id="aiMatchContent"></div>
+    </div>
+
     <div class="card" id="offerFormCard">
       <h3>Make an offer</h3>
       <p class="hint">Cash or terms — this goes straight to the wholesaler, along with your contact info.</p>
@@ -860,6 +865,7 @@ async function refreshSession(){
     dealsCache = [];
     myDealsCache = [];
     favoriteIdSet = new Set();
+    aiMatchMap = {};
     editingDealId = null;
     document.getElementById('roomEmpty').style.display = 'block';
     document.getElementById('roomContent').style.display = 'none';
@@ -985,6 +991,7 @@ async function loadDeals(){
   if(error){ document.getElementById('dealList').innerHTML = '<div class="empty">Error loading deals: '+error.message+'</div>'; return; }
   dealsCache = data || [];
   await loadFavorites();
+  await loadAIMatches();
   renderDeals();
 }
 
@@ -1011,7 +1018,8 @@ function scoreDeal(d){
 
 function dealCardHtml(d, opts){
   opts = opts || {};
-  const match = opts.showMatch ? scoreDeal(d) : null;
+  const aiMatch = opts.showMatch ? aiMatchMap[d.id] : null;
+  const match = opts.showMatch ? (aiMatch ? aiMatch.score : scoreDeal(d)) : null;
   const pricePerSqft = d.sqft ? Math.round(Number(d.price||0) / Number(d.sqft)) : null;
   const dom = d.created_at ? Math.max(0, Math.floor((Date.now() - new Date(d.created_at).getTime()) / 86400000)) : null;
   const isFav = opts.favoriteIds && opts.favoriteIds.has(d.id);
@@ -1021,9 +1029,10 @@ function dealCardHtml(d, opts){
       ${opts.showFavorite ? `<button class="fav-star ${isFav?'on':'off'}" onclick="event.stopPropagation();toggleFavorite('${d.id}')">${isFav?'★':'☆'}</button>` : ''}
       <div class="deal-top">
         <div><div class="deal-addr">${d.address}</div><div class="deal-sub">${d.sub||''}${d.occupancy ? ' · '+d.occupancy : ''}</div></div>
-        ${match!==null ? `<div class="match-badge">${match}% match</div>` : ''}
+        ${match!==null ? `<div class="match-badge">${match}% match${aiMatch ? ' · AI' : ''}</div>` : ''}
         ${opts.showStatus ? `<div class="status-badge ${d.status}">${d.status.replace('_',' ')}</div>` : ''}
       </div>
+      ${aiMatch?.reasoning ? `<div style="font-size:12px;color:#5a5f52;margin-top:8px;padding:8px 10px;background:var(--paper);border-radius:8px;">${aiMatch.reasoning}</div>` : ''}
       <div class="deal-metrics">
         <div class="dm"><b>$${Number(d.price||0).toLocaleString()}</b><span>Asking</span></div>
         <div class="dm"><b>$${Number(d.arv||0).toLocaleString()}</b><span>ARV</span></div>
@@ -1054,6 +1063,14 @@ async function toggleFavorite(dealId){
     favoriteIdSet.add(dealId);
   }
   renderDeals();
+}
+
+let aiMatchMap = {};
+async function loadAIMatches(){
+  aiMatchMap = {};
+  if(!currentUser || currentProfile?.role !== 'buyer') return;
+  const { data } = await sb.from('ai_matches').select('*').eq('buyer_id', currentUser.id);
+  (data||[]).forEach(m=> aiMatchMap[m.deal_id] = m);
 }
 
 function renderDeals(){
@@ -1220,9 +1237,22 @@ async function openDealRoom(id){
   await loadOffers(roomIsOwner);
   renderClosingCard();
   renderMilestones();
+  renderAIMatch();
   await renderRatingCard();
   await loadTrustLayer();
   await setupMessaging();
+}
+
+function renderAIMatch(){
+  const card = document.getElementById('aiMatchCard');
+  if(!activeDeal || roomIsOwner || currentProfile?.role !== 'buyer'){ card.style.display = 'none'; return; }
+  const match = aiMatchMap[activeDeal.id];
+  if(!match){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  document.getElementById('aiMatchContent').innerHTML = `
+    <div class="confidence-badge ${match.score>=75?'high':(match.score>=40?'mid':'low')}" style="background:${match.score>=75?'rgba(95,207,25,0.18)':(match.score>=40?'rgba(224,167,44,0.2)':'rgba(192,57,43,0.2)')};color:var(--ink);margin-bottom:10px;">${match.score}% AI match</div>
+    <p style="font-size:13.5px;color:#3d4235;line-height:1.5;margin:0;">${match.reasoning || ''}</p>
+  `;
 }
 
 function renderClosingCard(){
