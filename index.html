@@ -180,6 +180,9 @@
     <span class="brand-word"><span class="off">VAULT</span><span class="mkt">LIST</span></span>
   </div>
   <div class="header-right">
+    <button class="pill-btn ghost" id="profileBtn" style="display:none;padding:9px 11px;align-items:center;justify-content:center;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+    </button>
     <span id="userBadge" style="font-size:11.5px;color:#6b7062;display:none;"></span>
     <button class="pill-btn ghost" id="authBtn">Sign in</button>
   </div>
@@ -547,6 +550,19 @@
   <div class="section-head"><h2>All deals</h2><span class="count" id="adminDealCount"></span></div>
   <div id="adminDealsList" style="margin-bottom:26px;"><div class="empty">Loading…</div></div>
 
+  <div class="section-head"><h2>All conversations</h2><span class="count" id="adminConvoCount"></span></div>
+  <div id="adminConvoList" style="margin-bottom:26px;"><div class="empty">Loading…</div></div>
+  <div id="adminThreadView" style="display:none;margin-bottom:26px;">
+    <button class="btn-ghost-full" id="closeThreadBtn" style="margin-bottom:10px;">← Back to all conversations</button>
+    <div class="card">
+      <h3 id="adminThreadTitle">Conversation</h3>
+      <div id="adminThreadMessages" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <div class="section-head"><h2>Activity feed</h2><span class="count" id="adminActivityCount"></span></div>
+  <div id="adminActivityList" style="margin-bottom:26px;"><div class="empty">Loading…</div></div>
+
   <div class="section-head"><h2>All platform users</h2><span class="count" id="adminCount"></span></div>
   <div id="adminList"><div class="empty">Loading…</div></div>
 </div>
@@ -572,6 +588,27 @@
     <div class="field"><label>Password</label><input type="password" id="a_pass" placeholder="At least 6 characters"></div>
     <div class="auth-err" id="authErr"></div>
     <button class="btn-full" id="authSubmit" onclick="submitAuth()">Sign in</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="profileModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeProfile()">Close</button>
+    <h3>Your profile</h3>
+    <p class="hint">Update your name, phone, email, or password.</p>
+    <div class="field"><label>Full name</label><input type="text" id="p_name" placeholder="Darnell Carter"></div>
+    <div class="field"><label>Phone</label><input type="text" id="p_phone" placeholder="(561) 555-0192"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="p_email" placeholder="you@email.com">
+    </div>
+    <div class="field">
+      <label>New password <span style="font-weight:400;text-transform:none;color:#8a8f7d;">(leave blank to keep current)</span></label>
+      <input type="password" id="p_pass" placeholder="At least 6 characters">
+    </div>
+    <div class="auth-err" id="profileErr"></div>
+    <div id="profileMsg" style="font-size:12px;color:var(--green-deep);margin-bottom:10px;min-height:14px;"></div>
+    <button class="btn-full" id="profileSave">Save changes</button>
   </div>
 </div>
 
@@ -689,6 +726,70 @@ async function submitAuth(){
   }
 }
 
+// ---------- Profile ----------
+function openProfile(){
+  if(!currentUser || !currentProfile) return;
+  document.getElementById('p_name').value = currentProfile.full_name || '';
+  document.getElementById('p_phone').value = currentProfile.phone || '';
+  document.getElementById('p_email').value = currentUser.email || '';
+  document.getElementById('p_pass').value = '';
+  document.getElementById('profileErr').textContent = '';
+  document.getElementById('profileMsg').textContent = '';
+  document.getElementById('profileModal').classList.add('open');
+}
+function closeProfile(){
+  document.getElementById('profileModal').classList.remove('open');
+}
+document.getElementById('profileBtn').addEventListener('click', openProfile);
+
+document.getElementById('profileSave').addEventListener('click', async ()=>{
+  if(!currentUser) return;
+  const errEl = document.getElementById('profileErr');
+  const msgEl = document.getElementById('profileMsg');
+  errEl.textContent = ''; msgEl.textContent = '';
+  const saveBtn = document.getElementById('profileSave');
+  saveBtn.disabled = true;
+
+  const newName = document.getElementById('p_name').value.trim();
+  const newPhone = document.getElementById('p_phone').value.trim();
+  const newEmail = document.getElementById('p_email').value.trim();
+  const newPass = document.getElementById('p_pass').value;
+
+  try{
+    // Update name/phone in profiles table
+    const { error: profileError } = await sb.from('profiles').update({ full_name: newName, phone: newPhone }).eq('id', currentUser.id);
+    if(profileError){ errEl.textContent = profileError.message; return; }
+
+    let messages = ['Profile updated.'];
+
+    // Email change requires Supabase auth confirmation
+    if(newEmail && newEmail !== currentUser.email){
+      const { error: emailError } = await sb.auth.updateUser({ email: newEmail });
+      if(emailError){ errEl.textContent = 'Email not updated: ' + emailError.message; }
+      else {
+        await sb.from('profiles').update({ email: newEmail }).eq('id', currentUser.id);
+        messages.push('Check your new email to confirm the change before it takes effect.');
+      }
+    }
+
+    // Password change
+    if(newPass){
+      if(newPass.length < 6){
+        errEl.textContent = (errEl.textContent ? errEl.textContent + ' ' : '') + 'Password must be at least 6 characters — not updated.';
+      } else {
+        const { error: passError } = await sb.auth.updateUser({ password: newPass });
+        if(passError){ errEl.textContent = (errEl.textContent ? errEl.textContent + ' ' : '') + 'Password not updated: ' + passError.message; }
+        else messages.push('Password updated.');
+      }
+    }
+
+    msgEl.textContent = messages.join(' ');
+    await refreshSession();
+  } finally {
+    saveBtn.disabled = false;
+  }
+});
+
 async function refreshSession(){
   const previousUserId = currentUser ? currentUser.id : null;
   const { data: { session } } = await sb.auth.getSession();
@@ -727,6 +828,7 @@ async function refreshSession(){
     badge.style.display = 'inline';
     badge.textContent = (profile?.full_name || currentUser.email) + (profile ? ' · ' + profile.role : '');
     authBtn.textContent = 'Sign out';
+    document.getElementById('profileBtn').style.display = 'flex';
     const wholesaler = profile?.role==='wholesaler';
     document.getElementById('buyboxGate').style.display = wholesaler ? 'block' : 'none';
     document.getElementById('buyboxForm').style.display = wholesaler ? 'none' : 'block';
@@ -749,6 +851,7 @@ async function refreshSession(){
     currentProfile = null;
     badge.style.display = 'none';
     authBtn.textContent = 'Sign in';
+    document.getElementById('profileBtn').style.display = 'none';
     document.getElementById('buyboxGate').style.display = 'block';
     document.getElementById('buyboxForm').style.display = 'none';
     document.getElementById('submitGate').style.display = 'block';
@@ -1770,31 +1873,78 @@ async function toggleVerified(userId, currentlyVerified){
   await loadAdmin();
 }
 
+async function toggleBanned(userId, currentlyBanned){
+  const label = currentlyBanned ? 'unban' : 'ban';
+  if(!confirm(`Are you sure you want to ${label} this user? ${!currentlyBanned ? 'They will be blocked from posting deals, offers, or messages.' : ''}`)) return;
+  const { error } = await sb.from('profiles').update({ is_banned: !currentlyBanned }).eq('id', userId);
+  if(error){ toast('Error: ' + error.message); return; }
+  toast(currentlyBanned ? 'User unbanned' : 'User banned');
+  await loadAdmin();
+}
+
+function openAdminThread(dealId, buyerId){
+  const key = dealId + '::' + buyerId;
+  const msgs = (window._adminThreadMap[key]||[]).slice().sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  const deal = window._adminDealMap[dealId];
+  const buyer = window._adminProfileMap[buyerId];
+  const owner = deal ? window._adminProfileMap[deal.submitted_by] : null;
+  document.getElementById('adminThreadTitle').textContent = (deal ? deal.address : 'Deleted deal') + ' — ' + (owner?.full_name||owner?.email||'?') + ' ↔ ' + (buyer?.full_name||buyer?.email||'?');
+  document.getElementById('adminThreadMessages').innerHTML = msgs.map(m=>{
+    const sender = window._adminProfileMap[m.sender_id];
+    return `<div style="max-width:82%;align-self:${m.sender_id===deal?.submitted_by?'flex-end':'flex-start'};">
+      <div style="font-size:10.5px;font-weight:700;color:#8a8f7d;margin-bottom:3px;">${sender ? (sender.full_name||sender.email) : 'Unknown'} · ${new Date(m.created_at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
+      <div style="background:var(--paper);border:1px solid var(--line);padding:9px 12px;border-radius:12px;font-size:13.5px;">${m.body}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('adminConvoList').style.display = 'none';
+  document.getElementById('adminThreadView').style.display = 'block';
+}
+document.getElementById('closeThreadBtn').addEventListener('click', ()=>{
+  document.getElementById('adminThreadView').style.display = 'none';
+  document.getElementById('adminConvoList').style.display = 'block';
+});
+
+async function adminDeleteDeal(dealId){
+  if(!confirm('Remove this deal from the platform permanently? This also removes its offers, messages, photos, and documents.')) return;
+  const { error } = await sb.from('deals').delete().eq('id', dealId);
+  if(error){ toast('Error: ' + error.message); return; }
+  toast('Deal removed');
+  await loadAdmin();
+}
+
 async function loadAdmin(){
   if(!currentProfile?.is_admin) return;
   const statsBox = document.getElementById('adminStats');
   const dealsBox = document.getElementById('adminDealsList');
   const usersBox = document.getElementById('adminList');
+  const convoBox = document.getElementById('adminConvoList');
+  const activityBox = document.getElementById('adminActivityList');
   statsBox.innerHTML = '<div class="empty">Loading…</div>';
   dealsBox.innerHTML = '<div class="empty">Loading…</div>';
   usersBox.innerHTML = '<div class="empty">Loading…</div>';
+  convoBox.innerHTML = '<div class="empty">Loading…</div>';
+  activityBox.innerHTML = '<div class="empty">Loading…</div>';
+  document.getElementById('adminThreadView').style.display = 'none';
+  convoBox.style.display = 'block';
 
-  const [{ data: profiles, error: profErr }, { data: deals, error: dealErr }, { data: offers, error: offerErr }, { data: ratings, error: ratingErr }] = await Promise.all([
+  const [{ data: profiles, error: profErr }, { data: deals, error: dealErr }, { data: offers, error: offerErr }, { data: ratings, error: ratingErr }, { data: messages, error: msgErr }] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending:false }),
     sb.from('deals').select('*').order('created_at', { ascending:false }),
     sb.from('offers').select('*'),
-    sb.from('ratings').select('*')
+    sb.from('ratings').select('*'),
+    sb.from('messages').select('*').order('created_at', { ascending:false })
   ]);
 
-  if(profErr || dealErr || offerErr || ratingErr){
-    const msg = (profErr||dealErr||offerErr||ratingErr).message;
-    statsBox.innerHTML = ''; dealsBox.innerHTML = '<div class="empty">'+msg+'</div>'; usersBox.innerHTML='';
+  if(profErr || dealErr || offerErr || ratingErr || msgErr){
+    const msg = (profErr||dealErr||offerErr||ratingErr||msgErr).message;
+    statsBox.innerHTML = ''; dealsBox.innerHTML = '<div class="empty">'+msg+'</div>'; usersBox.innerHTML=''; convoBox.innerHTML=''; activityBox.innerHTML='';
     return;
   }
 
   const allProfiles = profiles || [];
   const allDeals = deals || [];
   const allOffers = offers || [];
+  const allMessages = messages || [];
   const allRatings = ratings || [];
   const profileMap = {};
   allProfiles.forEach(p=> profileMap[p.id] = p);
@@ -1853,9 +2003,72 @@ async function loadAdmin(){
           <div class="dm"><b>${commission!==null ? '$'+commission.toLocaleString() : '—'}</b><span>Commission (10%)</span></div>
         </div>
         ${acceptedBuyer ? `<div class="deal-tags"><span class="tag">Accepted: ${acceptedBuyer.full_name||acceptedBuyer.email} · $${Number(acceptedOffer.amount).toLocaleString()}</span></div>` : ''}
+        <div class="deal-actions"><button class="btn-sm danger" onclick="event.stopPropagation();adminDeleteDeal('${d.id}')">Remove deal</button></div>
       </div>`;
     }).join('');
   }
+
+  // ---- Conversations ----
+  const threadMap = {};
+  allMessages.forEach(m=>{
+    const key = m.deal_id + '::' + m.buyer_id;
+    if(!threadMap[key]) threadMap[key] = [];
+    threadMap[key].push(m);
+  });
+  const threadKeys = Object.keys(threadMap).sort((a,b)=> new Date(threadMap[b][0].created_at) - new Date(threadMap[a][0].created_at));
+  document.getElementById('adminConvoCount').textContent = threadKeys.length + ' threads';
+  const convoBox2 = document.getElementById('adminConvoList');
+  if(!threadKeys.length){
+    convoBox2.innerHTML = '<div class="empty">No conversations yet.</div>';
+  } else {
+    const dealMap = {};
+    allDeals.forEach(d=> dealMap[d.id] = d);
+    convoBox2.innerHTML = threadKeys.map(key=>{
+      const msgs = threadMap[key].slice().sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+      const [dealId, buyerId] = key.split('::');
+      const deal = dealMap[dealId];
+      const buyer = profileMap[buyerId];
+      const owner = deal ? profileMap[deal.submitted_by] : null;
+      const last = msgs[msgs.length-1];
+      return `
+      <div class="admin-row" style="cursor:pointer;align-items:flex-start;" onclick="openAdminThread('${dealId}','${buyerId}')">
+        <div>
+          <div class="name">${deal ? deal.address : 'Deleted deal'}</div>
+          <div class="meta">${owner ? (owner.full_name||owner.email) : '?'} ↔ ${buyer ? (buyer.full_name||buyer.email) : '?'}</div>
+          <div class="meta" style="color:#5a5f52;">"${(last.body||'').slice(0,80)}${last.body && last.body.length>80?'…':''}"</div>
+        </div>
+        <div class="role-badge">${msgs.length} msg${msgs.length!==1?'s':''}</div>
+      </div>`;
+    }).join('');
+  }
+  window._adminThreadMap = threadMap;
+  window._adminDealMap = {};
+  allDeals.forEach(d=> window._adminDealMap[d.id] = d);
+  window._adminProfileMap = profileMap;
+
+  // ---- Activity feed ----
+  const activity = [];
+  allDeals.forEach(d=>{
+    const owner = profileMap[d.submitted_by];
+    activity.push({ time:d.created_at, text:`${owner ? (owner.full_name||owner.email) : 'Someone'} posted a deal at ${d.address}` });
+    if(d.status==='under_contract') activity.push({ time:d.closed_at||d.created_at, text:`Deal at ${d.address} went under contract` });
+    if(d.status==='closed' && d.closed_at) activity.push({ time:d.closed_at, text:`Deal at ${d.address} closed` });
+  });
+  allOffers.forEach(o=>{
+    const buyer = profileMap[o.buyer_id];
+    const deal = window._adminDealMap[o.deal_id];
+    activity.push({ time:o.created_at, text:`${buyer ? (buyer.full_name||buyer.email) : 'A buyer'} offered $${Number(o.amount).toLocaleString()} on ${deal ? deal.address : 'a deal'}` });
+  });
+  allRatings.forEach(r=>{
+    const rater = profileMap[r.rater_id];
+    activity.push({ time:r.created_at, text:`${rater ? (rater.full_name||rater.email) : 'Someone'} left a ${r.stars}★ rating` });
+  });
+  activity.sort((a,b)=> new Date(b.time) - new Date(a.time));
+  document.getElementById('adminActivityCount').textContent = activity.length + ' events';
+  const activityBox2 = document.getElementById('adminActivityList');
+  activityBox2.innerHTML = activity.length
+    ? activity.slice(0,50).map(a=> `<div class="doc-row"><div class="name">${a.text}</div><span class="sz">${a.time ? new Date(a.time).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''}</span></div>`).join('')
+    : '<div class="empty">No activity yet.</div>';
 
   document.getElementById('adminCount').textContent = allProfiles.length + ' users';
   if(!allProfiles.length){ usersBox.innerHTML = '<div class="empty">No users yet.</div>'; return; }
@@ -1880,15 +2093,16 @@ async function loadAdmin(){
       : `${offerCountByUser[p.id]||0} offers made`;
     const avgRating = ratingCountByUser[p.id] ? (ratingSumByUser[p.id] / ratingCountByUser[p.id]).toFixed(1) : null;
     return `
-    <div class="admin-row">
+    <div class="admin-row" style="${p.is_banned ? 'opacity:0.6;' : ''}">
       <div>
-        <div class="name">${p.full_name || '(no name)'}${p.is_verified ? ' <span class="verified-badge">✓ Verified</span>' : ''}</div>
+        <div class="name">${p.full_name || '(no name)'}${p.is_verified ? ' <span class="verified-badge">✓ Verified</span>' : ''}${p.is_banned ? ' <span class="verified-badge" style="color:var(--danger);background:rgba(192,57,43,0.13);">Banned</span>' : ''}</div>
         <div class="meta">${p.email||''}${p.phone ? ' · '+p.phone : ''}</div>
         <div class="meta">Joined ${joined} · ${activity}${avgRating ? ' · ★'+avgRating+' ('+ratingCountByUser[p.id]+')' : ''}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
         <div class="role-badge">${p.role}${p.is_admin ? ' · admin' : ''}</div>
         <button class="btn-sm" style="padding:5px 10px;font-size:11px;" onclick="toggleVerified('${p.id}', ${p.is_verified})">${p.is_verified ? 'Unverify' : 'Verify'}</button>
+        ${!p.is_admin ? `<button class="btn-sm danger" style="padding:5px 10px;font-size:11px;" onclick="toggleBanned('${p.id}', ${p.is_banned})">${p.is_banned ? 'Unban' : 'Ban'}</button>` : ''}
       </div>
     </div>`;
   }).join('');
