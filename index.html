@@ -705,18 +705,15 @@ function urlBase64ToUint8Array(base64String){
   return outputArray;
 }
 
-async function enablePushNotifications(){
-  const hint = document.getElementById('pushHint');
-  hint.style.display = 'block';
+async function subscribeToPush(){
+  // Returns { ok: boolean, message: string }
   if(!('serviceWorker' in navigator) || !('PushManager' in window)){
-    hint.textContent = "Push notifications are not supported in this browser. On iPhone, make sure you opened this app from your Home Screen icon, not Safari directly.";
-    return;
+    return { ok:false, message: "Push notifications are not supported in this browser. On iPhone, make sure you opened this app from your Home Screen icon, not Safari directly." };
   }
   try{
     const permission = await Notification.requestPermission();
     if(permission !== 'granted'){
-      hint.textContent = 'Notifications permission was not granted.';
-      return;
+      return { ok:false, message: 'Notifications permission was not granted.' };
     }
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -733,12 +730,20 @@ async function enablePushNotifications(){
       p256dh: subJson.keys.p256dh,
       auth_key: subJson.keys.auth
     }, { onConflict:'endpoint' });
-    if(error){ hint.textContent = 'Error saving subscription: ' + error.message; return; }
-    hint.textContent = 'Notifications enabled on this device.';
-    toast('Push notifications enabled');
+    if(error) return { ok:false, message: 'Error saving subscription: ' + error.message };
+    return { ok:true, message: 'Notifications enabled on this device.' };
   } catch(err){
-    hint.textContent = 'Error: ' + err.message;
+    return { ok:false, message: 'Error: ' + err.message };
   }
+}
+
+async function enablePushNotifications(){
+  const hint = document.getElementById('pushHint');
+  hint.style.display = 'block';
+  hint.textContent = 'Requesting permission…';
+  const result = await subscribeToPush();
+  hint.textContent = result.message;
+  if(result.ok) toast('Push notifications enabled');
 }
 
 let currentUser = null;
@@ -837,6 +842,13 @@ async function submitAuth(){
     }
     closeAuth();
     await refreshSession();
+    if(authMode === 'signup' && currentUser){
+      // Ask for notification permission right away while the person is engaged,
+      // instead of hoping they find the button in their profile later.
+      subscribeToPush().then(result=>{
+        if(result.ok) toast('Push notifications enabled');
+      });
+    }
   } catch(err){
     console.error('Unexpected auth error:', err);
     errEl.textContent = 'Unexpected error: ' + (err.message || 'Please try again, or check the browser console for details.');
