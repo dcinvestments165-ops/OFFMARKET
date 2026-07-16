@@ -83,6 +83,8 @@
   .star-picker{display:flex;gap:6px;font-size:24px;cursor:pointer;}
   .star-picker span{color:#e3e8d6;}
   .star-picker span.on{color:#e0a72c;}
+  .tutorial-dot{flex:1;height:4px;border-radius:4px;background:var(--line);}
+  .tutorial-dot.done{background:linear-gradient(100deg,var(--lime),var(--green));}
   .status-badge{font-family:var(--font-mono);font-size:11px;font-weight:700;border-radius:100px;padding:4px 10px;flex:none;text-transform:uppercase;}
   .status-badge.active{color:var(--green-deep);background:rgba(95,207,25,0.13);}
   .status-badge.inactive{color:#8a8f7d;background:#f1f4e8;}
@@ -633,7 +635,7 @@
     <button class="btn-full" id="profileSave">Save changes</button>
     <button class="btn-ghost-full" id="enablePushBtn" style="display:none;">Enable notifications on this device</button>
     <p id="pushHint" style="font-size:11.5px;color:#8a8f7d;text-align:center;margin-top:8px;display:none;"></p>
-    <p style="text-align:center;margin-top:14px;font-size:12px;"><a href="#" onclick="event.preventDefault();openTerms();" style="color:#8a8f7d;">View Terms &amp; Conditions</a></p>
+    <p style="text-align:center;margin-top:14px;font-size:12px;"><a href="#" onclick="event.preventDefault();openTerms();" style="color:#8a8f7d;">View Terms &amp; Conditions</a> · <a href="#" onclick="event.preventDefault();closeProfile();startTutorial(currentProfile?.role);" style="color:#8a8f7d;">Replay tutorial</a></p>
   </div>
 </div>
 
@@ -668,6 +670,19 @@
       Vaultlist may update these terms from time to time. Continued use of the platform after changes constitutes acceptance of the updated terms.</p>
 
       <p style="margin-bottom:0;color:#8a8f7d;"><em>This document is a starting template and has not been reviewed by an attorney. It is provided for early-stage platform use and should be reviewed by qualified legal counsel before being relied upon for enforcement of payment obligations or dispute resolution.</em></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="tutorialModal">
+  <div class="modal" style="max-width:420px;">
+    <div style="display:flex;gap:6px;margin-bottom:18px;" id="tutorialDots"></div>
+    <div id="tutorialIcon" style="font-size:34px;margin-bottom:12px;"></div>
+    <h3 id="tutorialTitle">Welcome</h3>
+    <p class="hint" id="tutorialBody" style="line-height:1.6;font-size:13.5px;color:#3d4235;"></p>
+    <div style="display:flex;gap:8px;margin-top:20px;">
+      <button class="btn-ghost-full" id="tutorialSkip" style="margin-top:0;flex:1;">Skip</button>
+      <button class="btn-full" id="tutorialNext" style="margin-top:0;flex:2;">Next</button>
     </div>
   </div>
 </div>
@@ -799,6 +814,65 @@ function setAuthMode(mode){
   document.getElementById('authSubmit').textContent = mode==='signin' ? 'Sign in' : 'Create account';
 }
 function openTerms(){ document.getElementById('termsModal').classList.add('open'); }
+
+// ---------- Onboarding tutorial ----------
+const TUTORIAL_STEPS = {
+  wholesaler: [
+    { icon: '👋', title: 'Welcome to Vaultlist', body: 'You post deals, buyers with matching Buy Boxes get notified automatically, and you close right inside the app. Here\u2019s the quick version.' },
+    { icon: '📝', title: 'Submit a deal', body: 'Head to the Submit Deal tab and fill in the property details — price, ARV, rehab, and any flags like waterfront or short sale. The more detail you add, the better your matches.' },
+    { icon: '📊', title: 'Your Dashboard', body: 'Every deal you\u2019ve posted lives on your Dashboard, along with any offers that come in. Accept, reject, or message buyers right from there.' },
+    { icon: '🔒', title: 'Getting paid', body: 'When you accept an offer, the buyer\u2019s contact info stays private until you confirm the 10% commission is paid. Once confirmed, contact info unlocks and you can mark the deal closed.' },
+    { icon: '🚀', title: 'You\u2019re ready', body: 'Head to Submit Deal to post your first property — matched buyers will hear about it automatically.' }
+  ],
+  buyer: [
+    { icon: '👋', title: 'Welcome to Vaultlist', body: 'Off-market deals, matched to what you actually buy. Here\u2019s how to get set up in under a minute.' },
+    { icon: '🎯', title: 'Set your Buy Box', body: 'Tell us your markets, price range, minimum ROI, and preferences. Every new deal gets scored against it automatically — some are even scored by AI for a real fit explanation, not just a number.' },
+    { icon: '🏠', title: 'Browse the Deal Feed', body: 'See every live deal with your match score up front. Tap the star to save one for later, or open it to see photos, comps, and rehab breakdowns the wholesaler has added.' },
+    { icon: '💬', title: 'Offer & message', body: 'Make an offer right from a deal room, then message the wholesaler directly to negotiate — no need to trade phone numbers until you\u2019re ready.' },
+    { icon: '🚀', title: 'You\u2019re ready', body: 'Set your Buy Box now to start seeing real matches in your Deal Feed.' }
+  ]
+};
+let tutorialStepIndex = 0;
+let tutorialRole = 'buyer';
+
+function startTutorial(role){
+  tutorialRole = (role === 'wholesaler') ? 'wholesaler' : 'buyer';
+  tutorialStepIndex = 0;
+  renderTutorialStep();
+  document.getElementById('tutorialModal').classList.add('open');
+}
+
+function renderTutorialStep(){
+  const steps = TUTORIAL_STEPS[tutorialRole];
+  const step = steps[tutorialStepIndex];
+  document.getElementById('tutorialIcon').textContent = step.icon;
+  document.getElementById('tutorialTitle').textContent = step.title;
+  document.getElementById('tutorialBody').textContent = step.body;
+  document.getElementById('tutorialDots').innerHTML = steps.map((s,i)=> `<div class="tutorial-dot ${i<=tutorialStepIndex?'done':''}"></div>`).join('');
+  const isLast = tutorialStepIndex === steps.length - 1;
+  document.getElementById('tutorialNext').textContent = isLast ? 'Get started' : 'Next';
+  document.getElementById('tutorialSkip').style.display = isLast ? 'none' : 'block';
+}
+
+async function finishTutorial(){
+  document.getElementById('tutorialModal').classList.remove('open');
+  if(currentUser){
+    await sb.from('profiles').update({ has_seen_tutorial:true }).eq('id', currentUser.id);
+    if(currentProfile) currentProfile.has_seen_tutorial = true;
+  }
+}
+
+document.getElementById('tutorialNext').addEventListener('click', ()=>{
+  const steps = TUTORIAL_STEPS[tutorialRole];
+  if(tutorialStepIndex < steps.length - 1){
+    tutorialStepIndex++;
+    renderTutorialStep();
+  } else {
+    finishTutorial();
+  }
+});
+document.getElementById('tutorialSkip').addEventListener('click', finishTutorial);
+
 function closeTerms(){ document.getElementById('termsModal').classList.remove('open'); }
 document.getElementById('authBtn').addEventListener('click', ()=>{
   if(currentUser){ sb.auth.signOut(); } else { openAuth(); }
@@ -982,6 +1056,9 @@ async function refreshSession(){
     document.getElementById('dashHeading').textContent = wholesaler ? 'Wholesaler dashboard' : 'Buyer dashboard';
     await loadBuyBox();
     if(identityChanged) setView('dashboard');
+    if(identityChanged && profile && !profile.has_seen_tutorial){
+      setTimeout(()=> startTutorial(profile.role), 500);
+    }
   } else {
     currentProfile = null;
     badge.style.display = 'none';
