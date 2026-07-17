@@ -1780,7 +1780,10 @@ document.getElementById('sendContractBtn').addEventListener('click', async ()=>{
     statusEl.textContent = 'Sending to title company…';
     const res = await fetch(SUPABASE_URL + '/functions/v1/send-contract', {
       method: 'POST',
-      headers: { 'Content-Type':'application/json' },
+      headers: {
+        'Content-Type':'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      },
       body: JSON.stringify({
         to: titleEmail,
         cc: currentUser.email,
