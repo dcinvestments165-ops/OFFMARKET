@@ -11,7 +11,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Vaultlist">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   :root{
     --lime:#e5f927; --green-mid:#a3e31f; --green:#5fcf19; --green-deep:#3fa312;
@@ -499,12 +498,6 @@
         <div class="range-row">
           <div class="field" style="flex:1;"><label>Title contact email</label><input type="email" id="c_temail" placeholder="closer@title.com"></div>
           <div class="field" style="flex:1;"><label>Title contact phone</label><input type="text" id="c_tphone" placeholder="(561) 555-0100"></div>
-        </div>
-        <div class="card" style="background:var(--paper);border-style:dashed;margin-bottom:14px;">
-          <h3 style="font-size:13px;">Assignment contract</h3>
-          <p class="hint" style="margin-bottom:10px;">Auto-fills a standard assignment contract with this deal's details and emails it straight to the title company on file above.</p>
-          <button class="btn-ghost-full" id="sendContractBtn" style="margin-top:0;">Generate &amp; send contract to title company</button>
-          <p class="hint" id="contractStatus" style="margin-top:8px;margin-bottom:0;display:none;"></p>
         </div>
         <div class="range-row">
           <div class="field" style="flex:1;"><label>Earnest money amount</label><input type="number" id="c_emAmount" placeholder="5000"></div>
@@ -1697,115 +1690,6 @@ document.getElementById('markCommissionPaid').addEventListener('click', async ()
   toast('Commission marked as paid — contact info unlocked');
   renderClosingCard();
   await loadOffers(true);
-});
-
-// ---------- Assignment contract generation ----------
-document.getElementById('sendContractBtn').addEventListener('click', async ()=>{
-  if(!activeDeal || !roomIsOwner) return;
-  const statusEl = document.getElementById('contractStatus');
-  statusEl.style.display = 'block';
-
-  const titleEmail = document.getElementById('c_temail').value.trim();
-  if(!titleEmail){ statusEl.textContent = 'Enter the title contact email above first, then save closing details.'; return; }
-
-  const { data: acceptedOffer } = await sb.from('offers').select('*').eq('deal_id', activeDeal.id).eq('status','accepted').maybeSingle();
-  if(!acceptedOffer){ statusEl.textContent = 'No accepted offer found on this deal yet.'; return; }
-  const buyer = await (async ()=>{ const { data } = await sb.from('profiles').select('*').eq('id', acceptedOffer.buyer_id).maybeSingle(); return data; })();
-
-  statusEl.textContent = 'Generating contract…';
-  const btn = document.getElementById('sendContractBtn');
-  btn.disabled = true;
-
-  try{
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const wholesalerName = currentProfile?.full_name || currentUser.email;
-    const buyerName = buyer?.full_name || buyer?.email || 'Buyer';
-    const today = new Date().toLocaleDateString();
-    const purchasePrice = Number(activeDeal.price||0);
-    const assignmentFee = Number(activeDeal.assignment_fee||0);
-    const totalToBuyer = purchasePrice + assignmentFee;
-
-    let y = 20;
-    doc.setFont('helvetica','bold'); doc.setFontSize(16);
-    doc.text('ASSIGNMENT OF REAL ESTATE PURCHASE AGREEMENT', 105, y, { align:'center' }); y += 12;
-    doc.setFont('helvetica','normal'); doc.setFontSize(10);
-    doc.text(`Date: ${today}`, 20, y); y += 10;
-
-    doc.setFont('helvetica','bold'); doc.text('Property:', 20, y); doc.setFont('helvetica','normal');
-    doc.text(activeDeal.address || '', 55, y); y += 8;
-
-    doc.setFont('helvetica','bold'); doc.text('Assignor (Wholesaler):', 20, y); doc.setFont('helvetica','normal');
-    doc.text(wholesalerName, 75, y); y += 8;
-
-    doc.setFont('helvetica','bold'); doc.text('Assignee (Buyer):', 20, y); doc.setFont('helvetica','normal');
-    doc.text(buyerName, 75, y); y += 8;
-
-    doc.setFont('helvetica','bold'); doc.text('Original Purchase Price:', 20, y); doc.setFont('helvetica','normal');
-    doc.text('$' + purchasePrice.toLocaleString(), 80, y); y += 8;
-
-    doc.setFont('helvetica','bold'); doc.text('Assignment Fee:', 20, y); doc.setFont('helvetica','normal');
-    doc.text('$' + assignmentFee.toLocaleString(), 80, y); y += 8;
-
-    doc.setFont('helvetica','bold'); doc.text('Total to Assignee:', 20, y); doc.setFont('helvetica','normal');
-    doc.text('$' + totalToBuyer.toLocaleString(), 80, y); y += 8;
-
-    doc.setFont('helvetica','bold'); doc.text('Title Company:', 20, y); doc.setFont('helvetica','normal');
-    doc.text(activeDeal.title_company || '', 75, y); y += 14;
-
-    doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    const bodyText = `Assignor hereby assigns all rights, title, and interest in and to that certain Purchase and Sale Agreement for the above-referenced property to Assignee, in exchange for the Assignment Fee stated above. Assignee agrees to close on the property under the original terms of the underlying purchase agreement, plus the Assignment Fee payable to Assignor at closing. This document is a summary assignment notice intended for the title company's reference and does not replace the fully executed underlying purchase agreement, which should be provided separately.`;
-    const wrapped = doc.splitTextToSize(bodyText, 170);
-    doc.text(wrapped, 20, y); y += wrapped.length * 5 + 14;
-
-    doc.line(20, y, 90, y); doc.line(110, y, 180, y); y += 5;
-    doc.setFontSize(8);
-    doc.text('Assignor Signature', 20, y);
-    doc.text('Assignee Signature', 110, y); y += 16;
-
-    doc.setFontSize(7); doc.setTextColor(140,140,140);
-    const disclaimer = 'This is a template document generated by Vaultlist for convenience and has not been reviewed by an attorney. It is not a substitute for a fully executed purchase and sale agreement or legal advice. Consult a real estate attorney before relying on this document.';
-    doc.text(doc.splitTextToSize(disclaimer, 170), 20, y);
-
-    const pdfBase64 = doc.output('datauristring').split(',')[1];
-    const filename = `assignment-contract-${activeDeal.id.slice(0,8)}.pdf`;
-
-    // Store a copy in the deal's documents so both sides can see it was sent
-    const path = `${activeDeal.id}/${Date.now()}-${filename}`;
-    const pdfBlob = doc.output('blob');
-    await sb.storage.from('deal-docs').upload(path, pdfBlob);
-    const { data: publicUrlData } = sb.storage.from('deal-docs').getPublicUrl(path);
-    await sb.from('deal_documents').insert({ deal_id: activeDeal.id, url: publicUrlData.publicUrl, name: filename });
-
-    statusEl.textContent = 'Sending to title company…';
-    const res = await fetch(SUPABASE_URL + '/functions/v1/send-contract', {
-      method: 'POST',
-      headers: {
-        'Content-Type':'application/json',
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify({
-        to: titleEmail,
-        cc: currentUser.email,
-        pdfBase64,
-        filename,
-        dealAddress: activeDeal.address,
-        wholesalerName
-      })
-    });
-    if(!res.ok){
-      const errText = await res.text();
-      statusEl.textContent = 'Error sending: ' + errText;
-      return;
-    }
-    statusEl.textContent = 'Contract sent to ' + titleEmail + ' and saved to Documents.';
-    toast('Contract sent to title company');
-    await loadTrustLayer();
-  } catch(err){
-    statusEl.textContent = 'Error: ' + err.message;
-  } finally {
-    btn.disabled = false;
-  }
 });
 
 document.getElementById('markClosed').addEventListener('click', async ()=>{
