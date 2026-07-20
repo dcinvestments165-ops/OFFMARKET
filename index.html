@@ -54,6 +54,11 @@
   .tab[hidden]{display:none;}
   .view{display:none;padding:20px 20px 10px;animation:fadein .25s ease;}
   .view.active{display:block;}
+  .room-subtabbar{display:flex;gap:6px;overflow-x:auto;margin:16px 0 14px;padding-bottom:2px;}
+  .room-subtab{flex:none;border:1px solid var(--line);background:var(--white);border-radius:100px;padding:7px 13px;font-size:12.5px;font-weight:600;color:#6b7062;white-space:nowrap;}
+  .room-subtab.active{background:var(--charcoal);color:var(--white);border-color:var(--charcoal);}
+  .room-subview{display:none;animation:fadein .2s ease;}
+  .room-subview.active{display:block;}
   @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
   .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;}
   .section-head h2{font-family:var(--font-display);font-size:18px;font-weight:700;letter-spacing:-0.01em;}
@@ -221,8 +226,12 @@
 <div class="view" id="view-dashboard">
   <div class="section-head"><h2 id="dashHeading">Dashboard</h2></div>
   <div class="hero-stats" id="dashStats" style="margin-bottom:18px;"></div>
-  <div class="section-head"><h2>Overview</h2></div>
-  <div id="dashActionList"><div class="empty">Loading…</div></div>
+
+  <nav class="room-subtabbar" id="dashSubtabs"></nav>
+
+  <div class="room-subview active" id="dashtab-1"><div id="dashList1"><div class="empty">Loading…</div></div></div>
+  <div class="room-subview" id="dashtab-2"><div id="dashList2"></div></div>
+  <div class="room-subview" id="dashtab-3"><div id="dashList3"></div></div>
 </div>
 
 <!-- DEAL FEED -->
@@ -403,157 +412,179 @@
       <div class="meta" id="r_meta"></div>
       <div id="r_confidence" style="margin-top:10px;"></div>
     </div>
-    <div class="card">
-      <h3>Deal snapshot</h3>
-      <div class="deal-metrics">
-        <div class="dm"><b id="r_price"></b><span>Asking</span></div>
-        <div class="dm"><b id="r_arv"></b><span>ARV</span></div>
-        <div class="dm"><b id="r_roi"></b><span>Est. ROI</span></div>
-        <div class="dm"><b id="r_rehab"></b><span>Rehab</span></div>
-      </div>
-    </div>
 
-    <div class="card" id="photosCard">
-      <h3>Photos</h3>
-      <div id="photosGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;"></div>
-      <div id="photoUploadRow" style="display:none;">
-        <input type="file" id="photoInput" accept="image/*" multiple style="margin-bottom:10px;width:100%;">
-        <button class="btn-ghost-full" id="uploadPhotosBtn" style="margin-top:0;">Upload photos</button>
-      </div>
-    </div>
+    <nav class="room-subtabbar">
+      <button class="room-subtab active" data-room-tab="overview">Overview</button>
+      <button class="room-subtab" data-room-tab="trust">Trust &amp; Docs</button>
+      <button class="room-subtab" data-room-tab="offers">Offers</button>
+      <button class="room-subtab" data-room-tab="closing">Closing</button>
+      <button class="room-subtab" data-room-tab="messages">Messages</button>
+    </nav>
 
-    <div class="card" id="rehabCard">
-      <h3>Rehab breakdown</h3>
-      <p class="hint">Itemized estimate builds buyer confidence in the numbers.</p>
-      <div id="rehabList" style="margin-bottom:12px;"></div>
-      <div id="rehabAddRow" style="display:none;">
-        <div class="range-row">
-          <input type="text" id="rehab_cat" placeholder="Category (e.g. Roof)" style="flex:2;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
-          <input type="number" id="rehab_cost" placeholder="Cost" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
-          <button class="btn-sm primary" style="flex:none;padding:11px 16px;" id="addRehabItem">Add</button>
+    <div class="room-subview active" id="roomtab-overview">
+      <div class="card">
+        <h3>Deal snapshot</h3>
+        <div class="deal-metrics">
+          <div class="dm"><b id="r_price"></b><span>Asking</span></div>
+          <div class="dm"><b id="r_arv"></b><span>ARV</span></div>
+          <div class="dm"><b id="r_roi"></b><span>Est. ROI</span></div>
+          <div class="dm"><b id="r_rehab"></b><span>Rehab</span></div>
+        </div>
+      </div>
+
+      <div class="card" id="aiMatchCard" style="display:none;background:linear-gradient(180deg,rgba(229,249,39,0.08),rgba(95,207,25,0.04));border-color:rgba(95,207,25,0.3);">
+        <h3>🤖 AI Match Analysis</h3>
+        <div id="aiMatchContent"></div>
+      </div>
+
+      <div class="card" id="photosCard">
+        <h3>Photos</h3>
+        <div id="photosGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;"></div>
+        <div id="photoUploadRow" style="display:none;">
+          <input type="file" id="photoInput" accept="image/*" multiple style="margin-bottom:10px;width:100%;">
+          <button class="btn-ghost-full" id="uploadPhotosBtn" style="margin-top:0;">Upload photos</button>
         </div>
       </div>
     </div>
 
-    <div class="card" id="compsCard">
-      <h3>Comparable sales</h3>
-      <div id="compsList" style="margin-bottom:12px;"></div>
-      <div id="compsAddRow" style="display:none;">
-        <div class="field"><label>Address</label><input type="text" id="comp_addr" placeholder="123 Similar St"></div>
-        <div class="range-row">
-          <div class="field" style="flex:1;"><label>Sale price</label><input type="number" id="comp_price" placeholder="335000"></div>
-          <div class="field" style="flex:1;"><label>Sqft</label><input type="number" id="comp_sqft" placeholder="1650"></div>
-        </div>
-        <div class="field"><label>Sale date</label><input type="date" id="comp_date"></div>
-        <button class="btn-ghost-full" id="addCompBtn" style="margin-top:0;">Add comp</button>
-      </div>
-    </div>
-
-    <div class="card" id="docsCard">
-      <h3>Documents</h3>
-      <p class="hint">Purchase &amp; sale agreement, title docs, disclosures — anything a buyer needs to trust the deal.</p>
-      <div id="docsList" style="margin-bottom:12px;"></div>
-      <div id="docUploadRow" style="display:none;">
-        <input type="file" id="docInput" accept=".pdf,.doc,.docx,.jpg,.png" multiple style="margin-bottom:10px;width:100%;">
-        <button class="btn-ghost-full" id="uploadDocsBtn" style="margin-top:0;">Upload documents</button>
-      </div>
-    </div>
-
-    <div class="card" id="historyCard">
-      <h3>Property history</h3>
-      <div id="historyView" style="font-size:13.5px;color:#5a5f52;line-height:1.5;"></div>
-      <div id="historyEditRow" style="display:none;">
-        <textarea id="ph_text" rows="4" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);margin-bottom:10px;" placeholder="Last sold in 2018 for $210K. Owned by the same family since. No major renovations on record."></textarea>
-        <button class="btn-ghost-full" id="saveHistoryBtn" style="margin-top:0;">Save property history</button>
-      </div>
-    </div>
-
-    <div class="card" id="aiMatchCard" style="display:none;background:linear-gradient(180deg,rgba(229,249,39,0.08),rgba(95,207,25,0.04));border-color:rgba(95,207,25,0.3);">
-      <h3>🤖 AI Match Analysis</h3>
-      <div id="aiMatchContent"></div>
-    </div>
-
-    <div class="card" id="offerFormCard">
-      <h3>Make an offer</h3>
-      <p class="hint">Cash or terms — this goes straight to the wholesaler, along with your contact info.</p>
-      <div class="field"><label>Offer amount</label><input type="number" id="o_amount" placeholder="251000"></div>
-      <div class="field"><label>Terms</label><input type="text" id="o_terms" placeholder="Cash · Close in 14 days"></div>
-      <div class="field" style="margin-bottom:0;"><label>Note</label><textarea rows="2" id="o_note" placeholder="Optional note to the seller/wholesaler"></textarea></div>
-    </div>
-    <button class="btn-full" id="sendOffer">Submit offer</button>
-    <div class="card" style="margin-top:14px;">
-      <h3>Offers on this deal</h3>
-      <p class="hint" id="offersHint" style="display:none;">As the deal owner, you can see each buyer's contact info below to connect directly, and accept, reject, or message any offer.</p>
-      <div id="offersList"><div class="empty">No offers yet.</div></div>
-    </div>
-    <div class="card" id="closingCard" style="display:none;">
-      <h3>Move to closing</h3>
-      <p class="hint" id="closingHint"></p>
-      <div id="closingOwnerView" style="display:none;">
-        <div class="field"><label>Assignment fee</label><input type="number" id="c_fee" placeholder="10000"></div>
-        <div class="field">
-          <label>Title company</label>
-          <input type="text" id="c_title" placeholder="Sunshine Title Group">
-        </div>
-        <div class="range-row">
-          <div class="field" style="flex:1;"><label>Title contact email</label><input type="email" id="c_temail" placeholder="closer@title.com"></div>
-          <div class="field" style="flex:1;"><label>Title contact phone</label><input type="text" id="c_tphone" placeholder="(561) 555-0100"></div>
-        </div>
-        <div class="range-row">
-          <div class="field" style="flex:1;"><label>Earnest money amount</label><input type="number" id="c_emAmount" placeholder="5000"></div>
-          <div class="field" style="flex:1;">
-            <label>Earnest money status</label>
-            <select id="c_emStatus"><option value="not_submitted">Not submitted</option><option value="submitted">Submitted</option><option value="verified">Verified by title</option></select>
+    <div class="room-subview" id="roomtab-trust">
+      <div class="card" id="rehabCard">
+        <h3>Rehab breakdown</h3>
+        <p class="hint">Itemized estimate builds buyer confidence in the numbers.</p>
+        <div id="rehabList" style="margin-bottom:12px;"></div>
+        <div id="rehabAddRow" style="display:none;">
+          <div class="range-row">
+            <input type="text" id="rehab_cat" placeholder="Category (e.g. Roof)" style="flex:2;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
+            <input type="number" id="rehab_cost" placeholder="Cost" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
+            <button class="btn-sm primary" style="flex:none;padding:11px 16px;" id="addRehabItem">Add</button>
           </div>
         </div>
-        <div class="card" id="commissionPayCard" style="background:var(--paper);border-style:dashed;margin-bottom:14px;">
-          <div class="dm" style="margin-bottom:10px;"><b id="c_commission">$0</b><span>Vaultlist commission owed (10% of assignment fee)</span></div>
-          <p class="hint" style="margin-bottom:10px;">Send via Zelle to <strong>support@vaultlist.app</strong>, then confirm below.</p>
-          <div id="commissionStatusBadge" style="margin-bottom:10px;"></div>
-          <button class="btn-ghost-full" id="markCommissionPaid" style="margin-top:0;">Mark commission as paid</button>
+      </div>
+
+      <div class="card" id="compsCard">
+        <h3>Comparable sales</h3>
+        <div id="compsList" style="margin-bottom:12px;"></div>
+        <div id="compsAddRow" style="display:none;">
+          <div class="field"><label>Address</label><input type="text" id="comp_addr" placeholder="123 Similar St"></div>
+          <div class="range-row">
+            <div class="field" style="flex:1;"><label>Sale price</label><input type="number" id="comp_price" placeholder="335000"></div>
+            <div class="field" style="flex:1;"><label>Sqft</label><input type="number" id="comp_sqft" placeholder="1650"></div>
+          </div>
+          <div class="field"><label>Sale date</label><input type="date" id="comp_date"></div>
+          <button class="btn-ghost-full" id="addCompBtn" style="margin-top:0;">Add comp</button>
         </div>
-        <button class="btn-full" id="saveClosing" style="margin-bottom:8px;">Save closing details</button>
-        <button class="btn-ghost-full" id="markClosed" style="margin-top:0;" disabled>Mark deal as closed</button>
-        <p class="hint" id="closeGateHint" style="margin-top:8px;margin-bottom:0;">Confirm commission is paid before marking this deal closed.</p>
       </div>
-      <div id="closingBuyerView" style="display:none;">
-        <div class="doc-row"><div><span class="name" id="cb_title">Title company TBD</span></div></div>
-        <div class="doc-row"><div><span class="name">Email</span></div><span class="sz" id="cb_email">—</span></div>
-        <div class="doc-row"><div><span class="name">Phone</span></div><span class="sz" id="cb_phone">—</span></div>
-        <div class="doc-row"><div><span class="name">Earnest money</span></div><span class="sz" id="cb_em">—</span></div>
+
+      <div class="card" id="docsCard">
+        <h3>Documents</h3>
+        <p class="hint">Purchase &amp; sale agreement, title docs, disclosures — anything a buyer needs to trust the deal.</p>
+        <div id="docsList" style="margin-bottom:12px;"></div>
+        <div id="docUploadRow" style="display:none;">
+          <input type="file" id="docInput" accept=".pdf,.doc,.docx,.jpg,.png" multiple style="margin-bottom:10px;width:100%;">
+          <button class="btn-ghost-full" id="uploadDocsBtn" style="margin-top:0;">Upload documents</button>
+        </div>
       </div>
-      <div id="closedView" style="display:none;">
-        <div class="doc-row"><div><span class="name">Status</span></div><span class="sz">✅ Closed</span></div>
-        <div class="doc-row"><div><span class="name">Closed on</span></div><span class="sz" id="cd_date">—</span></div>
+
+      <div class="card" id="historyCard">
+        <h3>Property history</h3>
+        <div id="historyView" style="font-size:13.5px;color:#5a5f52;line-height:1.5;"></div>
+        <div id="historyEditRow" style="display:none;">
+          <textarea id="ph_text" rows="4" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);margin-bottom:10px;" placeholder="Last sold in 2018 for $210K. Owned by the same family since. No major renovations on record."></textarea>
+          <button class="btn-ghost-full" id="saveHistoryBtn" style="margin-top:0;">Save property history</button>
+        </div>
       </div>
     </div>
 
-    <div class="card" id="milestonesCard" style="display:none;">
-      <h3>Closing progress</h3>
-      <p class="hint">Track the deal from contract to close, all in one place.</p>
-      <div id="milestonesList"></div>
-    </div>
-
-    <div class="card" id="ratingCard" style="display:none;">
-      <h3>Rate this transaction</h3>
-      <p class="hint" id="ratingHint"></p>
-      <div class="star-picker" id="starPicker">
-        <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>
+    <div class="room-subview" id="roomtab-offers">
+      <div class="card" id="offerFormCard">
+        <h3>Make an offer</h3>
+        <p class="hint">Cash or terms — this goes straight to the wholesaler, along with your contact info.</p>
+        <div class="field"><label>Offer amount</label><input type="number" id="o_amount" placeholder="251000"></div>
+        <div class="field"><label>Terms</label><input type="text" id="o_terms" placeholder="Cash · Close in 14 days"></div>
+        <div class="field" style="margin-bottom:0;"><label>Note</label><textarea rows="2" id="o_note" placeholder="Optional note to the seller/wholesaler"></textarea></div>
       </div>
-      <textarea id="ratingComment" rows="2" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);margin:12px 0;" placeholder="Optional comment about how the transaction went"></textarea>
-      <button class="btn-ghost-full" id="submitRatingBtn" style="margin-top:0;">Submit rating</button>
-      <div id="ratingSubmitted" style="display:none;" class="empty">You've already rated this transaction. Thank you!</div>
+      <button class="btn-full" id="sendOffer">Submit offer</button>
+      <div class="card" style="margin-top:14px;">
+        <h3>Offers on this deal</h3>
+        <p class="hint" id="offersHint" style="display:none;">As the deal owner, you can see each buyer's contact info below to connect directly, and accept, reject, or message any offer.</p>
+        <div id="offersList"><div class="empty">No offers yet.</div></div>
+      </div>
     </div>
 
-    <div class="card" id="messageCard" style="display:none;">
-      <h3 id="messageHeading">Conversation</h3>
-      <p class="hint" id="messageSubHint"></p>
-      <div id="threadPicker" style="display:none;margin-bottom:12px;"></div>
-      <div id="messageThread" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;margin-bottom:12px;"></div>
-      <div id="messageComposer" style="display:none;">
-        <div class="range-row">
-          <input type="text" id="msgInput" placeholder="Type a message…" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
-          <button class="btn-sm primary" style="flex:none;padding:11px 16px;" id="msgSend">Send</button>
+    <div class="room-subview" id="roomtab-closing">
+      <div class="card" id="closingCard" style="display:none;">
+        <h3>Move to closing</h3>
+        <p class="hint" id="closingHint"></p>
+        <div id="closingOwnerView" style="display:none;">
+          <div class="field"><label>Assignment fee</label><input type="number" id="c_fee" placeholder="10000"></div>
+          <div class="field">
+            <label>Title company</label>
+            <input type="text" id="c_title" placeholder="Sunshine Title Group">
+          </div>
+          <div class="range-row">
+            <div class="field" style="flex:1;"><label>Title contact email</label><input type="email" id="c_temail" placeholder="closer@title.com"></div>
+            <div class="field" style="flex:1;"><label>Title contact phone</label><input type="text" id="c_tphone" placeholder="(561) 555-0100"></div>
+          </div>
+          <div class="range-row">
+            <div class="field" style="flex:1;"><label>Earnest money amount</label><input type="number" id="c_emAmount" placeholder="5000"></div>
+            <div class="field" style="flex:1;">
+              <label>Earnest money status</label>
+              <select id="c_emStatus"><option value="not_submitted">Not submitted</option><option value="submitted">Submitted</option><option value="verified">Verified by title</option></select>
+            </div>
+          </div>
+          <div class="card" id="commissionPayCard" style="background:var(--paper);border-style:dashed;margin-bottom:14px;">
+            <div class="dm" style="margin-bottom:10px;"><b id="c_commission">$0</b><span>Vaultlist commission owed (10% of assignment fee)</span></div>
+            <p class="hint" style="margin-bottom:10px;">Send via Zelle to <strong>support@vaultlist.app</strong>, then confirm below.</p>
+            <div id="commissionStatusBadge" style="margin-bottom:10px;"></div>
+            <button class="btn-ghost-full" id="markCommissionPaid" style="margin-top:0;">Mark commission as paid</button>
+          </div>
+          <button class="btn-full" id="saveClosing" style="margin-bottom:8px;">Save closing details</button>
+          <button class="btn-ghost-full" id="markClosed" style="margin-top:0;" disabled>Mark deal as closed</button>
+          <p class="hint" id="closeGateHint" style="margin-top:8px;margin-bottom:0;">Confirm commission is paid before marking this deal closed.</p>
+        </div>
+        <div id="closingBuyerView" style="display:none;">
+          <div class="doc-row"><div><span class="name" id="cb_title">Title company TBD</span></div></div>
+          <div class="doc-row"><div><span class="name">Email</span></div><span class="sz" id="cb_email">—</span></div>
+          <div class="doc-row"><div><span class="name">Phone</span></div><span class="sz" id="cb_phone">—</span></div>
+          <div class="doc-row"><div><span class="name">Earnest money</span></div><span class="sz" id="cb_em">—</span></div>
+        </div>
+        <div id="closedView" style="display:none;">
+          <div class="doc-row"><div><span class="name">Status</span></div><span class="sz">✅ Closed</span></div>
+          <div class="doc-row"><div><span class="name">Closed on</span></div><span class="sz" id="cd_date">—</span></div>
+        </div>
+      </div>
+
+      <div class="card" id="milestonesCard" style="display:none;">
+        <h3>Closing progress</h3>
+        <p class="hint">Track the deal from contract to close, all in one place.</p>
+        <div id="milestonesList"></div>
+      </div>
+
+      <div class="card" id="ratingCard" style="display:none;">
+        <h3>Rate this transaction</h3>
+        <p class="hint" id="ratingHint"></p>
+        <div class="star-picker" id="starPicker">
+          <span data-star="1">★</span><span data-star="2">★</span><span data-star="3">★</span><span data-star="4">★</span><span data-star="5">★</span>
+        </div>
+        <textarea id="ratingComment" rows="2" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);margin:12px 0;" placeholder="Optional comment about how the transaction went"></textarea>
+        <button class="btn-ghost-full" id="submitRatingBtn" style="margin-top:0;">Submit rating</button>
+        <div id="ratingSubmitted" style="display:none;" class="empty">You've already rated this transaction. Thank you!</div>
+      </div>
+
+      <div class="empty" id="closingEmptyHint">Nothing to close yet — this shows up once an offer is accepted.</div>
+    </div>
+
+    <div class="room-subview" id="roomtab-messages">
+      <div class="card" id="messageCard" style="display:none;">
+        <h3 id="messageHeading">Conversation</h3>
+        <p class="hint" id="messageSubHint"></p>
+        <div id="threadPicker" style="display:none;margin-bottom:12px;"></div>
+        <div id="messageThread" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;margin-bottom:12px;"></div>
+        <div id="messageComposer" style="display:none;">
+          <div class="range-row">
+            <input type="text" id="msgInput" placeholder="Type a message…" style="flex:1;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;background:var(--paper);">
+            <button class="btn-sm primary" style="flex:none;padding:11px 16px;" id="msgSend">Send</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1365,6 +1396,14 @@ async function deleteDeal(id){
 let roomIsOwner = false;
 let activeThreadBuyerId = null;
 
+function setRoomTab(tab){
+  document.querySelectorAll('.room-subtab').forEach(t=> t.classList.toggle('active', t.dataset.roomTab===tab));
+  document.querySelectorAll('.room-subview').forEach(v=> v.classList.toggle('active', v.id==='roomtab-'+tab));
+}
+document.querySelectorAll('.room-subtab').forEach(t=>{
+  t.addEventListener('click', ()=> setRoomTab(t.dataset.roomTab));
+});
+
 async function openDealRoom(id){
   activeDeal = dealsCache.find(d=>d.id===id) || myDealsCache.find(d=>d.id===id);
   if(!activeDeal){
@@ -1374,6 +1413,7 @@ async function openDealRoom(id){
   if(!activeDeal) return;
   document.getElementById('roomEmpty').style.display='none';
   document.getElementById('roomContent').style.display='block';
+  setRoomTab('overview');
   document.getElementById('r_addr').textContent = activeDeal.address;
   document.getElementById('r_meta').textContent = (activeDeal.sub||'') + ' · ' + activeDeal.market + (activeDeal.status==='under_contract' ? ' · UNDER CONTRACT' : '');
   document.getElementById('r_price').textContent = '$'+Number(activeDeal.price||0).toLocaleString();
@@ -1409,7 +1449,10 @@ function renderAIMatch(){
 
 function renderClosingCard(){
   const card = document.getElementById('closingCard');
-  if(!activeDeal || (activeDeal.status !== 'under_contract' && activeDeal.status !== 'closed')){ card.style.display = 'none'; return; }
+  const emptyHint = document.getElementById('closingEmptyHint');
+  const hasClosingContent = activeDeal && (activeDeal.status === 'under_contract' || activeDeal.status === 'closed');
+  if(emptyHint) emptyHint.style.display = hasClosingContent ? 'none' : 'block';
+  if(!hasClosingContent){ card.style.display = 'none'; return; }
   card.style.display = 'block';
   const ownerView = document.getElementById('closingOwnerView');
   const buyerView = document.getElementById('closingBuyerView');
@@ -1965,23 +2008,39 @@ document.getElementById('sendOffer').addEventListener('click', async ()=>{
 });
 
 // ---------- Dashboard ----------
+function setDashTab(n){
+  document.querySelectorAll('#dashSubtabs .room-subtab').forEach(t=> t.classList.toggle('active', t.dataset.dashTab==n));
+  document.querySelectorAll('#view-dashboard .room-subview').forEach(v=> v.classList.toggle('active', v.id==='dashtab-'+n));
+}
+
 async function loadDashboard(){
   const statsBox = document.getElementById('dashStats');
-  const listBox = document.getElementById('dashActionList');
+  const subtabs = document.getElementById('dashSubtabs');
+  const list1 = document.getElementById('dashList1');
+  const list2 = document.getElementById('dashList2');
+  const list3 = document.getElementById('dashList3');
   if(!currentUser){
-    listBox.innerHTML = '<div class="empty">Sign in to see your dashboard.</div>';
+    list1.innerHTML = '<div class="empty">Sign in to see your dashboard.</div>';
+    subtabs.innerHTML = '';
     return;
   }
   if(!currentProfile){
-    listBox.innerHTML = '<div class="empty">Your profile hasn\'t loaded yet. Try signing out and back in — if that persists, your account may be missing a profile row.</div>';
+    list1.innerHTML = '<div class="empty">Your profile hasn\'t loaded yet. Try signing out and back in — if that persists, your account may be missing a profile row.</div>';
+    subtabs.innerHTML = '';
     return;
   }
   const isWholesaler = currentProfile.role === 'wholesaler';
-  listBox.innerHTML = '<div class="empty">Loading…</div>';
+  list1.innerHTML = '<div class="empty">Loading…</div>';
 
   try{
 
   if(isWholesaler){
+    subtabs.innerHTML = `
+      <button class="room-subtab active" data-dash-tab="1" onclick="setDashTab(1)">Needs Attention</button>
+      <button class="room-subtab" data-dash-tab="2" onclick="setDashTab(2)">All Deals</button>
+    `;
+    document.getElementById('dashtab-3').style.display = 'none';
+
     const { data: myDeals } = await sb.from('deals').select('*').eq('submitted_by', currentUser.id);
     const deals = myDeals || [];
     const dealIds = deals.map(d=>d.id);
@@ -2027,16 +2086,12 @@ async function loadDashboard(){
       html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:16px 0 10px;">No offers yet — consider re-sharing</h3>`;
       html += needsOffers.map(d=> dealCardHtml(d, { clickable:true, actions:`<div class="deal-actions"><button class="btn-sm" onclick="openDealRoom('${d.id}')">View</button></div>` })).join('');
     }
-    if(!html){
-      html = '<div class="empty">Nothing needs urgent attention right now.</div>';
-    }
+    list1.innerHTML = html || '<div class="empty">Nothing needs urgent attention right now.</div>';
 
-    // Full list — every deal this wholesaler has ever posted, regardless of state
-    html += `<h3 style="font-family:var(--font-display);font-size:14px;margin:22px 0 10px;">All your deals (${deals.length})</h3>`;
     if(!deals.length){
-      html += '<div class="empty">You haven\'t posted any deals yet — head to Submit Deal to publish your first one.</div>';
+      list2.innerHTML = '<div class="empty">You haven\'t posted any deals yet — head to Submit Deal to publish your first one.</div>';
     } else {
-      html += deals.map(d=>{
+      list2.innerHTML = deals.map(d=>{
         const offerCount = (offersByDeal[d.id]||[]).length;
         return dealCardHtml(d, {
           showStatus:true,
@@ -2049,9 +2104,15 @@ async function loadDashboard(){
         });
       }).join('');
     }
-    listBox.innerHTML = html;
 
   } else {
+    subtabs.innerHTML = `
+      <button class="room-subtab active" data-dash-tab="1" onclick="setDashTab(1)">Top Matches</button>
+      <button class="room-subtab" data-dash-tab="2" onclick="setDashTab(2)">Saved</button>
+      <button class="room-subtab" data-dash-tab="3" onclick="setDashTab(3)">My Offers</button>
+    `;
+    document.getElementById('dashtab-3').style.display = 'block';
+
     const { data: myOffers } = await sb.from('offers').select('*, deal:deals(address, status, market)').eq('buyer_id', currentUser.id).order('created_at', { ascending:false });
     const offers = myOffers || [];
     const accepted = offers.filter(o=>o.status==='accepted').length;
@@ -2078,6 +2139,301 @@ async function loadDashboard(){
         else currentIndex = 2;
       }
       return stages.map((s,i)=>{
+        const isRejectedStop = rejected && i===1;
+        const active = i<=currentIndex && !isRejectedStop;
+        const bg = isRejectedStop ? '#f8ded9' : (active ? 'rgba(95,207,25,0.15)' : '#f1f4e8');
+        const fg = isRejectedStop ? 'var(--danger)' : (active ? 'var(--green-deep)' : '#8a8f7d');
+        return `<span class="tag" style="background:${bg};color:${fg};">${s}${isRejectedStop ? ' ✕' : ''}</span>`;
+      }).join(' <span style="color:#c7ccb8;">→</span> ');
+    }
+
+    list1.innerHTML = topMatches.length
+      ? topMatches.slice(0,8).map(d=> dealCardHtml(d, { showMatch:true, clickable:true, actions:`<div class="deal-actions"><button class="btn-sm primary" onclick="openDealRoom('${d.id}')">View &amp; offer</button></div>` })).join('')
+      : '<div class="empty">No unmatched top deals right now — set or widen your Buy Box to see more.</div>';
+
+    const { data: savedRows } = await sb.from('favorites').select('deal_id, deals(*)').eq('user_id', currentUser.id).order('created_at', { ascending:false });
+    const savedDeals = (savedRows||[]).map(r=>r.deals).filter(Boolean);
+    list2.innerHTML = savedDeals.length
+      ? savedDeals.map(d=> dealCardHtml(d, { showMatch:true, clickable:true, showFavorite:true, favoriteIds: favoriteIdSet, actions:`<div class="deal-actions"><button class="btn-sm primary" onclick="openDealRoom('${d.id}')">View</button></div>` })).join('')
+      : '<div class="empty">Tap the star on any deal in the Deal Feed to save it here.</div>';
+
+    list3.innerHTML = offers.length
+      ? offers.map(o=> `
+        <div class="offer-row">
+          <div class="offer-top">
+            <div><div class="who">${o.deal?.address || 'Deal'}</div><div class="st">${o.deal?.market||''}</div></div>
+            <div class="amt">$${Number(o.amount).toLocaleString()}</div>
+          </div>
+          <div style="margin-top:10px;">${offerStageHtml(o)}</div>
+          <div class="deal-actions" style="margin-top:10px;"><button class="btn-sm" onclick="openDealRoom('${o.deal_id}')">Open deal room</button></div>
+        </div>`).join('')
+      : '<div class="empty">You haven\'t made any offers yet.</div>';
+  }
+  setDashTab(1);
+
+  } catch(err){
+    console.error('Dashboard load error:', err);
+    list1.innerHTML = '<div class="empty">Something went wrong loading your dashboard: ' + (err.message||err) + '</div>';
+  }
+}
+
+// ---------- Admin ----------
+async function toggleVerified(userId, currentlyVerified){
+  const { error } = await sb.from('profiles').update({ is_verified: !currentlyVerified }).eq('id', userId);
+  if(error){ toast('Error: ' + error.message); return; }
+  toast(currentlyVerified ? 'User unverified' : 'User verified');
+  await loadAdmin();
+}
+
+async function toggleBanned(userId, currentlyBanned){
+  const label = currentlyBanned ? 'unban' : 'ban';
+  if(!confirm(`Are you sure you want to ${label} this user? ${!currentlyBanned ? 'They will be blocked from posting deals, offers, or messages.' : ''}`)) return;
+  const { error } = await sb.from('profiles').update({ is_banned: !currentlyBanned }).eq('id', userId);
+  if(error){ toast('Error: ' + error.message); return; }
+  toast(currentlyBanned ? 'User unbanned' : 'User banned');
+  await loadAdmin();
+}
+
+function openAdminThread(dealId, buyerId){
+  const key = dealId + '::' + buyerId;
+  const msgs = (window._adminThreadMap[key]||[]).slice().sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  const deal = window._adminDealMap[dealId];
+  const buyer = window._adminProfileMap[buyerId];
+  const owner = deal ? window._adminProfileMap[deal.submitted_by] : null;
+  document.getElementById('adminThreadTitle').textContent = (deal ? deal.address : 'Deleted deal') + ' — ' + (owner?.full_name||owner?.email||'?') + ' ↔ ' + (buyer?.full_name||buyer?.email||'?');
+  document.getElementById('adminThreadMessages').innerHTML = msgs.map(m=>{
+    const sender = window._adminProfileMap[m.sender_id];
+    return `<div style="max-width:82%;align-self:${m.sender_id===deal?.submitted_by?'flex-end':'flex-start'};">
+      <div style="font-size:10.5px;font-weight:700;color:#8a8f7d;margin-bottom:3px;">${sender ? (sender.full_name||sender.email) : 'Unknown'} · ${new Date(m.created_at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
+      <div style="background:var(--paper);border:1px solid var(--line);padding:9px 12px;border-radius:12px;font-size:13.5px;">${m.body}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('adminConvoList').style.display = 'none';
+  document.getElementById('adminThreadView').style.display = 'block';
+}
+document.getElementById('closeThreadBtn').addEventListener('click', ()=>{
+  document.getElementById('adminThreadView').style.display = 'none';
+  document.getElementById('adminConvoList').style.display = 'block';
+});
+
+async function adminDeleteDeal(dealId){
+  if(!confirm('Remove this deal from the platform permanently? This also removes its offers, messages, photos, and documents.')) return;
+  const { error } = await sb.from('deals').delete().eq('id', dealId);
+  if(error){ toast('Error: ' + error.message); return; }
+  toast('Deal removed');
+  await loadAdmin();
+}
+
+async function loadAdmin(){
+  if(!currentProfile?.is_admin) return;
+  const statsBox = document.getElementById('adminStats');
+  const dealsBox = document.getElementById('adminDealsList');
+  const usersBox = document.getElementById('adminList');
+  const convoBox = document.getElementById('adminConvoList');
+  const activityBox = document.getElementById('adminActivityList');
+  statsBox.innerHTML = '<div class="empty">Loading…</div>';
+  dealsBox.innerHTML = '<div class="empty">Loading…</div>';
+  usersBox.innerHTML = '<div class="empty">Loading…</div>';
+  convoBox.innerHTML = '<div class="empty">Loading…</div>';
+  activityBox.innerHTML = '<div class="empty">Loading…</div>';
+  document.getElementById('adminThreadView').style.display = 'none';
+  convoBox.style.display = 'block';
+
+  const [{ data: profiles, error: profErr }, { data: deals, error: dealErr }, { data: offers, error: offerErr }, { data: ratings, error: ratingErr }, { data: messages, error: msgErr }] = await Promise.all([
+    sb.from('profiles').select('*').order('created_at', { ascending:false }),
+    sb.from('deals').select('*').order('created_at', { ascending:false }),
+    sb.from('offers').select('*'),
+    sb.from('ratings').select('*'),
+    sb.from('messages').select('*').order('created_at', { ascending:false })
+  ]);
+
+  if(profErr || dealErr || offerErr || ratingErr || msgErr){
+    const msg = (profErr||dealErr||offerErr||ratingErr||msgErr).message;
+    statsBox.innerHTML = ''; dealsBox.innerHTML = '<div class="empty">'+msg+'</div>'; usersBox.innerHTML=''; convoBox.innerHTML=''; activityBox.innerHTML='';
+    return;
+  }
+
+  const allProfiles = profiles || [];
+  const allDeals = deals || [];
+  const allOffers = offers || [];
+  const allMessages = messages || [];
+  const allRatings = ratings || [];
+  const profileMap = {};
+  allProfiles.forEach(p=> profileMap[p.id] = p);
+
+  const buyers = allProfiles.filter(p=>p.role==='buyer').length;
+  const wholesalers = allProfiles.filter(p=>p.role==='wholesaler').length;
+  const activeDeals = allDeals.filter(d=>d.status==='active').length;
+  const underContract = allDeals.filter(d=>d.status==='under_contract').length;
+  const closedDeals = allDeals.filter(d=>d.status==='closed').length;
+  const projectedCommission = allDeals
+    .filter(d=> d.status==='under_contract' && d.assignment_fee)
+    .reduce((sum,d)=> sum + (Number(d.assignment_fee)||0) * 0.10, 0);
+  const earnedCommission = allDeals
+    .filter(d=> d.status==='closed' && d.assignment_fee)
+    .reduce((sum,d)=> sum + (Number(d.assignment_fee)||0) * 0.10, 0);
+
+  statsBox.innerHTML = `
+    <div class="hstat"><b>${allProfiles.length}</b><span>Total users</span></div>
+    <div class="hstat"><b>${wholesalers}</b><span>Wholesalers</span></div>
+    <div class="hstat"><b>${buyers}</b><span>Buyers</span></div>
+    <div class="hstat"><b>${allDeals.length}</b><span>Total deals</span></div>
+    <div class="hstat"><b>${activeDeals}</b><span>Active</span></div>
+    <div class="hstat"><b>${underContract}</b><span>Under contract</span></div>
+    <div class="hstat"><b>${closedDeals}</b><span>Closed</span></div>
+    <div class="hstat"><b>${allOffers.length}</b><span>Total offers</span></div>
+    <div class="hstat"><b>$${Math.round(projectedCommission).toLocaleString()}</b><span>Pending commission</span></div>
+    <div class="hstat"><b>$${Math.round(earnedCommission).toLocaleString()}</b><span>Earned commission</span></div>
+  `;
+
+  const offerCountByDeal = {};
+  const acceptedByDeal = {};
+  allOffers.forEach(o=>{
+    offerCountByDeal[o.deal_id] = (offerCountByDeal[o.deal_id]||0) + 1;
+    if(o.status==='accepted') acceptedByDeal[o.deal_id] = o;
+  });
+
+  document.getElementById('adminDealCount').textContent = allDeals.length + ' deals';
+  if(!allDeals.length){
+    dealsBox.innerHTML = '<div class="empty">No deals posted yet.</div>';
+  } else {
+    dealsBox.innerHTML = allDeals.map(d=>{
+      const owner = profileMap[d.submitted_by];
+      const commission = ((d.status==='under_contract' || d.status==='closed') && d.assignment_fee) ? Math.round(Number(d.assignment_fee)*0.10) : null;
+      const acceptedOffer = acceptedByDeal[d.id];
+      const acceptedBuyer = acceptedOffer ? profileMap[acceptedOffer.buyer_id] : null;
+      return `
+      <div class="deal-card clickable" onclick="openDealRoom('${d.id}')">
+        <div class="deal-top">
+          <div><div class="deal-addr">${d.address}</div><div class="deal-sub">Posted by ${owner ? (owner.full_name||owner.email) : 'Unknown wholesaler'}</div></div>
+          <div class="status-badge ${d.status}">${d.status.replace('_',' ')}</div>
+        </div>
+        <div class="deal-metrics">
+          <div class="dm"><b>$${Number(d.price||0).toLocaleString()}</b><span>Asking</span></div>
+          <div class="dm"><b>${offerCountByDeal[d.id]||0}</b><span>Offers</span></div>
+          <div class="dm"><b>${d.assignment_fee ? '$'+Number(d.assignment_fee).toLocaleString() : '—'}</b><span>Assignment fee</span></div>
+          <div class="dm"><b>${commission!==null ? '$'+commission.toLocaleString() : '—'}</b><span>Commission (10%)</span></div>
+        </div>
+        ${acceptedBuyer ? `<div class="deal-tags"><span class="tag">Accepted: ${acceptedBuyer.full_name||acceptedBuyer.email} · $${Number(acceptedOffer.amount).toLocaleString()}</span></div>` : ''}
+        <div class="deal-actions"><button class="btn-sm danger" onclick="event.stopPropagation();adminDeleteDeal('${d.id}')">Remove deal</button></div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---- Conversations ----
+  const threadMap = {};
+  allMessages.forEach(m=>{
+    const key = m.deal_id + '::' + m.buyer_id;
+    if(!threadMap[key]) threadMap[key] = [];
+    threadMap[key].push(m);
+  });
+  const threadKeys = Object.keys(threadMap).sort((a,b)=> new Date(threadMap[b][0].created_at) - new Date(threadMap[a][0].created_at));
+  document.getElementById('adminConvoCount').textContent = threadKeys.length + ' threads';
+  const convoBox2 = document.getElementById('adminConvoList');
+  if(!threadKeys.length){
+    convoBox2.innerHTML = '<div class="empty">No conversations yet.</div>';
+  } else {
+    const dealMap = {};
+    allDeals.forEach(d=> dealMap[d.id] = d);
+    convoBox2.innerHTML = threadKeys.map(key=>{
+      const msgs = threadMap[key].slice().sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+      const [dealId, buyerId] = key.split('::');
+      const deal = dealMap[dealId];
+      const buyer = profileMap[buyerId];
+      const owner = deal ? profileMap[deal.submitted_by] : null;
+      const last = msgs[msgs.length-1];
+      return `
+      <div class="admin-row" style="cursor:pointer;align-items:flex-start;" onclick="openAdminThread('${dealId}','${buyerId}')">
+        <div>
+          <div class="name">${deal ? deal.address : 'Deleted deal'}</div>
+          <div class="meta">${owner ? (owner.full_name||owner.email) : '?'} ↔ ${buyer ? (buyer.full_name||buyer.email) : '?'}</div>
+          <div class="meta" style="color:#5a5f52;">"${(last.body||'').slice(0,80)}${last.body && last.body.length>80?'…':''}"</div>
+        </div>
+        <div class="role-badge">${msgs.length} msg${msgs.length!==1?'s':''}</div>
+      </div>`;
+    }).join('');
+  }
+  window._adminThreadMap = threadMap;
+  window._adminDealMap = {};
+  allDeals.forEach(d=> window._adminDealMap[d.id] = d);
+  window._adminProfileMap = profileMap;
+
+  // ---- Activity feed ----
+  const activity = [];
+  allDeals.forEach(d=>{
+    const owner = profileMap[d.submitted_by];
+    activity.push({ time:d.created_at, text:`${owner ? (owner.full_name||owner.email) : 'Someone'} posted a deal at ${d.address}` });
+    if(d.status==='under_contract') activity.push({ time:d.closed_at||d.created_at, text:`Deal at ${d.address} went under contract` });
+    if(d.status==='closed' && d.closed_at) activity.push({ time:d.closed_at, text:`Deal at ${d.address} closed` });
+  });
+  allOffers.forEach(o=>{
+    const buyer = profileMap[o.buyer_id];
+    const deal = window._adminDealMap[o.deal_id];
+    activity.push({ time:o.created_at, text:`${buyer ? (buyer.full_name||buyer.email) : 'A buyer'} offered $${Number(o.amount).toLocaleString()} on ${deal ? deal.address : 'a deal'}` });
+  });
+  allRatings.forEach(r=>{
+    const rater = profileMap[r.rater_id];
+    activity.push({ time:r.created_at, text:`${rater ? (rater.full_name||rater.email) : 'Someone'} left a ${r.stars}★ rating` });
+  });
+  activity.sort((a,b)=> new Date(b.time) - new Date(a.time));
+  document.getElementById('adminActivityCount').textContent = activity.length + ' events';
+  const activityBox2 = document.getElementById('adminActivityList');
+  activityBox2.innerHTML = activity.length
+    ? activity.slice(0,50).map(a=> `<div class="doc-row"><div class="name">${a.text}</div><span class="sz">${a.time ? new Date(a.time).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : ''}</span></div>`).join('')
+    : '<div class="empty">No activity yet.</div>';
+
+  document.getElementById('adminCount').textContent = allProfiles.length + ' users';
+  if(!allProfiles.length){ usersBox.innerHTML = '<div class="empty">No users yet.</div>'; return; }
+  const dealCountByUser = {};
+  const closedCountByUser = {};
+  allDeals.forEach(d=>{
+    dealCountByUser[d.submitted_by] = (dealCountByUser[d.submitted_by]||0) + 1;
+    if(d.status==='closed') closedCountByUser[d.submitted_by] = (closedCountByUser[d.submitted_by]||0) + 1;
+  });
+  const offerCountByUser = {};
+  allOffers.forEach(o=>{ offerCountByUser[o.buyer_id] = (offerCountByUser[o.buyer_id]||0) + 1; });
+  const ratingSumByUser = {};
+  const ratingCountByUser = {};
+  allRatings.forEach(r=>{
+    ratingSumByUser[r.rated_id] = (ratingSumByUser[r.rated_id]||0) + r.stars;
+    ratingCountByUser[r.rated_id] = (ratingCountByUser[r.rated_id]||0) + 1;
+  });
+  usersBox.innerHTML = allProfiles.map(p=>{
+    const joined = p.created_at ? new Date(p.created_at).toLocaleDateString() : '—';
+    const activity = p.role==='wholesaler'
+      ? `${dealCountByUser[p.id]||0} deals posted · ${closedCountByUser[p.id]||0} closed`
+      : `${offerCountByUser[p.id]||0} offers made`;
+    const avgRating = ratingCountByUser[p.id] ? (ratingSumByUser[p.id] / ratingCountByUser[p.id]).toFixed(1) : null;
+    return `
+    <div class="admin-row" style="${p.is_banned ? 'opacity:0.6;' : ''}">
+      <div>
+        <div class="name">${p.full_name || '(no name)'}${p.is_verified ? ' <span class="verified-badge">✓ Verified</span>' : ''}${p.is_banned ? ' <span class="verified-badge" style="color:var(--danger);background:rgba(192,57,43,0.13);">Banned</span>' : ''}</div>
+        <div class="meta">${p.email||''}${p.phone ? ' · '+p.phone : ''}</div>
+        <div class="meta">Joined ${joined} · ${activity}${avgRating ? ' · ★'+avgRating+' ('+ratingCountByUser[p.id]+')' : ''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <div class="role-badge">${p.role}${p.is_admin ? ' · admin' : ''}</div>
+        <button class="btn-sm" style="padding:5px 10px;font-size:11px;" onclick="toggleVerified('${p.id}', ${p.is_verified})">${p.is_verified ? 'Unverify' : 'Verify'}</button>
+        ${!p.is_admin ? `<button class="btn-sm danger" style="padding:5px 10px;font-size:11px;" onclick="toggleBanned('${p.id}', ${p.is_banned})">${p.is_banned ? 'Unban' : 'Ban'}</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---------- Stats ----------
+async function loadStats(){
+  const { count: buyerCount } = await sb.from('profiles').select('*', { count:'exact', head:true }).eq('role','buyer');
+  const { count: dealCount } = await sb.from('deals').select('*', { count:'exact', head:true }).eq('status','active');
+  const { count: offerCount } = await sb.from('offers').select('*', { count:'exact', head:true });
+  document.getElementById('statBuyers').textContent = buyerCount ?? 0;
+  document.getElementById('statDeals').textContent = dealCount ?? 0;
+  document.getElementById('statOffers').textContent = offerCount ?? 0;
+}
+
+refreshSession();
+</script>
+</body>
+</html>      return stages.map((s,i)=>{
         const isRejectedStop = rejected && i===1;
         const active = i<=currentIndex && !isRejectedStop;
         const bg = isRejectedStop ? '#f8ded9' : (active ? 'rgba(95,207,25,0.15)' : '#f1f4e8');
